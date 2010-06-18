@@ -1,8 +1,8 @@
 var sys = require("sys");
-var wink = require("../lib/wink");
+var hydna = require("../lib/hydna");
 
 var message = "Hello World!";
-var stream = wink.open("aabbccdd11112222", "rw");
+var stream = hydna.open("aabbccdd11112222", "rw");
 
 stream.addListener("connect", function() {
   sys.puts("Sending: " + message);

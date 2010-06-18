@@ -1,10 +1,10 @@
 var sys = require("sys");
-var wink = require("../lib/wink");
+var hydna = require("../lib/hydna");
 
 const NO_OF_PACKETS = 100000;
 const DATA = "123456789012345";
 
-var stream = wink.open("aabbccdd11112222", "rw");
+var stream = hydna.open("aabbccdd11112222", "rw");
 var bytesRecived = 0;
 var packetsRecived = 0;
 var startTime = 0;
