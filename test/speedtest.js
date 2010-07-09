@@ -4,7 +4,7 @@ var hydna = require("../lib/hydna");
 const NO_OF_PACKETS = 100000;
 const DATA = "123456789012345";
 
-var stream = hydna.open("aabbccdd11112222", "rw");
+var stream = hydna.open("00:00:00:00:aa:bb:cc:dd:00:00:00:00:11:11:22:22", "rw");
 var bytesRecived = 0;
 var packetsRecived = 0;
 var startTime = 0;
