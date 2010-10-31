@@ -20,6 +20,7 @@ function partone() {
     ok(this.readable);
     ok(!this.writable);
     equal(this.readyState, "readOnly");
+    stream.end();
   });
   stream.on("close", function() {
     process.nextTick(parttwo);
@@ -27,7 +28,6 @@ function partone() {
   throws(function() {
     stream.write(payload);
   });
-  stream.end();
 }
 
 function parttwo() {
@@ -37,15 +37,18 @@ function parttwo() {
     ok(this.writable);
     equal(this.readyState, "writeOnly");
   });
+  stream.on("drain", function() {
+    setTimeout(function() {
+      stream.end();
+    }, 200);
+  });
   stream.on("data", function() {
     throw new Error("Should not populate data");
-  })
-  doesNotThrow(function() {
-    stream.write(payload);
   });
-  setTimeout(function() {
+  stream.on("close", function() {
     shutdown();
-  }, 500);
+  });
+  stream.write(payload);
 }
 
 process.nextTick(partone);

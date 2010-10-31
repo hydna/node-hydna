@@ -1,30 +1,29 @@
 #!/usr/bin/env node
-/** 
- *        Copyright 2010 Johan Dahlberg. All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without 
- *  modification, are permitted provided that the following conditions 
- *  are met:
- *
- *    1. Redistributions of source code must retain the above copyright notice, 
- *       this list of conditions and the following disclaimer.
- *
- *    2. Redistributions in binary form must reproduce the above copyright 
- *       notice, this list of conditions and the following disclaimer in the 
- *       documentation and/or other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, 
- *  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY 
- *  AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL 
- *  THE AUTHORS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
- *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
- *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
- *  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
+// 
+//        Copyright 2010 Johan Dahlberg. All rights reserved.
+//
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions
+//  are met:
+//
+//    1. Redistributions of source code must retain the above copyright notice,
+//       this list of conditions and the following disclaimer.
+//
+//    2. Redistributions in binary form must reproduce the above copyright 
+//       notice, this list of conditions and the following disclaimer in the 
+//       documentation and/or other materials provided with the distribution.
+//
+//  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+//  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+//  AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+//  THE AUTHORS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+//  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+//  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+//  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+//  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+//  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
 
 const print               = require("util").print
     , spawn               = require("child_process").spawn
@@ -33,8 +32,19 @@ const print               = require("util").print
     , basename            = require("path").basename
     , join                = require("path").join
 
-const VERSION             = '0.9b';
+const VERSION             = "1.0.0";
+const USAGE               = "Usage: test.js [options] filepath or dirpath";
 
+const HELP 								= USAGE + "\n" + "\
+Options:                                                              \n\
+  -h, --help             Show this help                               \n\
+  -v, --version          Shows current version                        \n\
+  -r, --recursive        Recursive-mode. Selects all test in dirpath  \n\
+                         and its subdirectories.                      \n\
+    , --usage            Show usage for command                       \n\
+    , --silent           Silent-mode.                                 \n\
+    , --logstdout        Print's all data sent to test's stdout       \n";
+    
 function main() {
   var args = process.argv.slice(2);
   var arg = null;
@@ -57,13 +67,22 @@ function main() {
     }
   }
   
+  if (!opts.r) {
+    opts.r = opts.recursive;
+  }
+
+  if (opts.help || opts.h) {
+    console.log(HELP);
+    return;
+  }
+  
   paths.forEach(function(path) {
     stat(path).isDirectory() && (tests = tests.concat(files(path, opts.r)));
     stat(path).isFile() && tests.push(path);    
   });
 
   if (!tests.length || opts.usage) {
-    console.log('Usage: test [options] filepath, dirpath');
+    console.log(USAGE);
     return;
   }
   
@@ -114,10 +133,14 @@ function main() {
 }
 
 /**
- *  Test a module 
- *  @param {String}   path      Path to module
- *  @param {Function} callback  A callback
- * path, options, execArgs, callback
+ *  ## test.test(path, [options], [execargs], [callback])
+ *
+ *  Spawns a new child process and runs specified  `'path'`. The optional 
+ *  `'callback'` is called when child process exits. The first argument is set
+ *  if an error occured.
+ *
+ *  Available options:
+ *  * logstdout - Prints all data from child's stdout to current process stdout.
  */
 exports.test = function() {
   var args = Array.prototype.slice.call(arguments);
@@ -127,8 +150,14 @@ exports.test = function() {
   var execArgs = Array.isArray(args[0]) ? args.shift() : [];
   var callback = typeof args[0] == "function" ? args.shift() : null;
   var uargs = [path].concat(typeof arguments[1] == "function" ? [] : args);
-  var proc = spawn(process.execPath, [path].concat(execArgs));
+  var proc = spawn(process.execPath, [path].concat(execArgs || []));
   var err = null;
+  
+  if (opts.logstdout && !opts.silent) {
+    proc.stdout.on("data", function(data) {
+      print(data);
+    });
+  }
 
   proc.stderr.on("data", function(error) {
     err = error;
@@ -144,13 +173,7 @@ exports.test = function() {
   
 }
 
-/**
- *  Get all tests objects form specified directory. 
- *
- *  @param {String}   dirpath Path to directory
- *  @param {Boolean}  r       Recursive mode, search through subdirectory for
- *                            test objects as well.
- */
+// Get all tests objects form specified directory. 
 function files(dirpath, r) {
   var result = [];
   var paths = readdir(dirpath);

@@ -11,9 +11,12 @@ timeout(200);
 
 payload = createPayload(10241);
 stream = createTestStream("rw");
-
-throws(function() {
-  stream.write(payload);
+stream.on("connect", function() {
+  throws(function() {
+    stream.write(payload);
+  });  
+  stream.end();
 });
-
-shutdown();
+stream.on("close", function() {
+  shutdown();
+});

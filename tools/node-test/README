@@ -1,0 +1,22 @@
+Lightweight testing module for Node.js
+======================================
+
+Node-test is a lightweight testing module for Node.js. The module can be imported to existing projects or run as a stand-alone command-line utility.
+
+How-to run 
+----------
+To run in command-line mode, simply execute the script:
+
+    test.js my-test-case.js
+    
+The script takes a script or a directory as argument. If a directory is specified, all files that starts with 'test' is tested (e.g. test-mytest.js).
+
+Use the command-line option `-r` to recursively select all test's in directory and subdirectories.
+
+    test.js -r test/
+    
+Start the script with `--help` to see all available options.
+  
+License
+-------
+BSD-style license (read full license in lib/test.js).
