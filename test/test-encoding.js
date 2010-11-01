@@ -7,13 +7,17 @@ const ok                  = require("assert").ok
     , shutdown            = require("./common").shutdown
     , createTestStream    = require("./common").createTestStream
 
-var stream;
+var stream
+  , successfullTests = 0
 
 timeout(5000);
 
 stream = createTestStream("rw");
 stream.on("connect", testAscii);
-stream.on("close", function() { shutdown() });
+stream.on("close", function() { 
+  equal(successfullTests, 4);
+  shutdown() 
+});
 
 throws(function() {
  stream.setEncoding("NA");
@@ -23,6 +27,7 @@ function testAscii() {
   stream.setEncoding("ascii");
   stream.once("data", function(data) {
     equal(data, "ascii");
+    successfullTests++;
     process.nextTick(testUtf8);
   });
   stream.write("ascii", "ascii");
@@ -32,6 +37,7 @@ function testUtf8() {
   stream.setEncoding("utf8");
   stream.once("data", function(data) {
     equal(data, "åäö");
+    successfullTests++;
     process.nextTick(testJson);
   });
   stream.write("åäö", "utf8");  
@@ -42,16 +48,18 @@ function testJson() {
   stream.setEncoding("json");
   stream.once("data", function(data) {
     deepEqual(data, graph);
+    successfullTests++;
     process.nextTick(testBase64);
   });
   stream.write(graph, "json");
 }
 
 function testBase64() {
-  stream.setEncoding("base64");
+  stream.setEncoding("ascii");
   stream.once("data", function(data) {
     equal(data, "base64");
+    successfullTests++;
     stream.end();
   });
-  stream.write("base64", "base64");
+  stream.write("YmFzZTY0", "base64");
 }

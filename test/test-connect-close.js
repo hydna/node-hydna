@@ -7,7 +7,6 @@ const ok                  = require("assert").ok
     , streamErrHandler    = require("./common").streamErrHandler
 
 var stream;
-var payload;
 
 timeout(1000);
 
