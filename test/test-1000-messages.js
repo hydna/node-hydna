@@ -1,8 +1,9 @@
-const throws              = require("assert").throws
+const ok                  = require("assert").ok
     , timeout             = require("./common").timeout
     , shutdown            = require("./common").shutdown
     , createTestStream    = require("./common").createTestStream
     , createPayload       = require("./common").createPayload
+    , compareBuffers      = require("./common").compareBuffers
 
 var stream;
 var payload;
@@ -18,6 +19,7 @@ stream.on("connect", function() {
   }
 });
 stream.on("data", function(data) {
+  ok(compareBuffers(payload, data));
   if (++count == 1000) {
     stream.end();
   }

@@ -41,3 +41,19 @@ exports.createPayload = function(size) {
   
   return payload
 }
+
+exports.compareBuffers = function(bufferA, bufferB) {
+  var index = bufferA.length;
+  
+  if (index != bufferB.length) {
+    return false;
+  }
+  
+  while (index--) {
+    if (bufferA[index] != bufferB[index]) {
+      return false;
+    }
+  }
+  
+  return true;
+}
