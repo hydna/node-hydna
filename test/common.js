@@ -3,7 +3,7 @@ const Buffer          = require("buffer").Buffer
     
 
 
-exports.TEST_ADDR     = "00112233445566770011223344556677";
+exports.TEST_ADDR     = "0011223300112233";
 
 var timer = null;
 
