@@ -9,7 +9,7 @@ var count = 0;
 
 timeout(2000);
 
-stream = createTestStream("rw+s");
+stream = createTestStream("rw+e");
 stream.on("connect", function() {
   stream.sendSignal("ping");
 });
