@@ -4,7 +4,7 @@ const doesNotThrow        = require("assert").doesNotThrow
     , shutdown            = require("./common").shutdown
     , createTestStream    = require("./common").createTestStream
 
-timeout(2000);
+// timeout(20000);
 
 throws(function() {
   createTestStream("readwrite-signal");
@@ -36,4 +36,4 @@ doesNotThrow(function() {
   createTestStream("readwrite+emit").end();
 });
 
-shutdown();
+// shutdown();

@@ -19,7 +19,7 @@ function partone() {
   stream.on("connect", function() {
     ok(this.readable);
     ok(!this.writable);
-    equal(this.readyState, "readOnly");
+    equal(this.readyState, "read");
     stream.end();
   });
   stream.on("close", function() {
@@ -35,12 +35,10 @@ function parttwo() {
   stream.on("connect", function() {
     ok(!this.readable);
     ok(this.writable);
-    equal(this.readyState, "writeOnly");
+    equal(this.readyState, "write");
   });
   stream.on("drain", function() {
-    setTimeout(function() {
-      stream.end();
-    }, 200);
+    stream.end();
   });
   stream.on("data", function() {
     throw new Error("Should not populate data");

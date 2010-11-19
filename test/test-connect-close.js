@@ -14,7 +14,7 @@ stream = createTestStream("rw");
 stream.on("connect", function() {
   ok(this.readable);
   ok(this.writable);
-  equal(this.readyState, "open");
+  equal(this.readyState, "readwrite");
   stream.end();
 });
 stream.on("close", function() {

@@ -33,7 +33,7 @@ function parttwo() {
     this._connection.end();
   });
   stream.on("error", function(exception) {
-    equal(exception.message, "Unknown Internal Error");
+    equal(exception.message, "Connection closed by server");
     errorraised = true;
   });
   stream.on("close", function() {
