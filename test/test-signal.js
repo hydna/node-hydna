@@ -13,8 +13,7 @@ stream = createTestStream("rw+e");
 stream.on("connect", function() {
   stream.dispatch("ping");
 });
-stream.on("signal", function(data, type) {
-  equal(type, 10);
+stream.on("signal", function(data) {
   equal(data, "pong");
   stream.end();
 });
