@@ -10,6 +10,7 @@ var count = 0;
 timeout(2000);
 
 stream = createTestStream("rw+e");
+stream.setEncoding("utf8");
 stream.on("connect", function() {
   stream.dispatch("ping");
 });
