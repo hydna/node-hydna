@@ -2,8 +2,8 @@ const Buffer          = require("buffer").Buffer
     , Stream          = require("../lib/hydna").Stream
     
 
-exports.TEST_ZONE     = "00000001";
-exports.TEST_ADDR     = exports.TEST_ZONE + "-00112233";
+exports.TEST_ZONE     = "localhost:7010";
+exports.TEST_ADDR     = exports.TEST_ZONE + "/00112233";
 
 var timer = null;
 

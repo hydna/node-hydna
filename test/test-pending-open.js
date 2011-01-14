@@ -20,6 +20,6 @@ function onconnect() {
 
 for (var i = 0; i < NO_REQUESTS; i++) {
   stream = new Stream();
-  stream.connect(TEST_ZONE + "-1", "r");
+  stream.connect(TEST_ZONE + "/1", "r");
   stream.on("connect", onconnect);
 }
