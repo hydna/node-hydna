@@ -3,7 +3,7 @@ const Buffer          = require("buffer").Buffer
     
 
 exports.TEST_ZONE     = "localhost:7010";
-exports.TEST_ADDR     = exports.TEST_ZONE + "/00112233";
+exports.TEST_ADDR     = exports.TEST_ZONE + "/x00112233";
 
 var timer = null;
 
