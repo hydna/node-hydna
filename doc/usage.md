@@ -2,7 +2,7 @@
 
 Creating a connection:
 
-    ::: javascript
+    :::javascript
     var createStream = require('hydna').createStream;
     var stream = createStream('AABBCCDD-AABBAABB', 'rw');
 
@@ -19,7 +19,7 @@ attached to the stream.
 
 Sending Data:
 
-    ::: javascript
+    :::javascript
     var createStream = require('hydna').createStream;
     var stream = createStream('AABBCCDD-AABBAABB', 'w');
 
@@ -33,7 +33,7 @@ the connect event has been emitted, writes a message.
 
 Receiving data:
 
-    ::: javascript
+    :::javascript
     var hydna = require('hydna');
     var stream = createStream('AABBCCDD-AABBAABB', 'r');
     
