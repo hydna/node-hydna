@@ -15,7 +15,7 @@ stream.on("connect", function() {
   ok(this.readable);
   ok(this.writable);
   equal(this.readyState, "readwrite");
-  stream.end();
+  stream.close();
 });
 stream.on("close", function() {
   shutdown();

@@ -14,9 +14,9 @@ timeout(5000);
 
 stream = createTestStream("rw");
 stream.on("connect", testAscii);
-stream.on("close", function() { 
+stream.on("close", function() {
   equal(successfullTests, 4);
-  shutdown() 
+  shutdown();
 });
 
 throws(function() {
@@ -40,7 +40,7 @@ function testUtf8() {
     successfullTests++;
     process.nextTick(testJson);
   });
-  stream.write("åäö", "utf8");  
+  stream.write("åäö", "utf8");
 }
 
 function testJson() {
@@ -59,7 +59,7 @@ function testBase64() {
   stream.once("data", function(data) {
     equal(data, "base64");
     successfullTests++;
-    stream.end();
+    stream.close();
   });
   stream.write("YmFzZTY0", "base64");
 }

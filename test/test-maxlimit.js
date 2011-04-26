@@ -14,8 +14,8 @@ stream = createTestStream("rw");
 stream.on("connect", function() {
   throws(function() {
     stream.write(payload);
-  });  
-  stream.end();
+  });
+  stream.close();
 });
 stream.on("close", function() {
   shutdown();

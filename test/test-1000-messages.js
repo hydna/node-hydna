@@ -21,7 +21,7 @@ stream.on("connect", function() {
 stream.on("data", function(data) {
   ok(compareBuffers(payload, data));
   if (++count == 1000) {
-    stream.end();
+    stream.close();
   }
 });
 stream.on("close", function() {
