@@ -4,7 +4,7 @@ Creating a connection:
 
     :::javascript
     var createStream = require('hydna').createStream;
-    var stream = createStream('AABBCCDD-AABBAABB', 'rw');
+    var stream = createStream('demo.hydna.net', 'rw');
 
     stream.on('connect', function() {
       // read/write connection is ready to use 
@@ -21,7 +21,7 @@ Sending Data:
 
     :::javascript
     var createStream = require('hydna').createStream;
-    var stream = createStream('AABBCCDD-AABBAABB', 'w');
+    var stream = createStream('demo.hydna.net', 'w');
 
     stream.on('connect', function() {
       var message = "Hello World!";
@@ -35,7 +35,7 @@ Receiving data:
 
     :::javascript
     var hydna = require('hydna');
-    var stream = createStream('AABBCCDD-AABBAABB', 'r');
+    var stream = createStream('demo.hydna.net', 'r');
     
     stream.setEncoding("utf8");
     
