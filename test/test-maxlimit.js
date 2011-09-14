@@ -15,7 +15,7 @@ stream.on("connect", function() {
   throws(function() {
     stream.write(payload);
   });
-  stream.close();
+  stream.destroy();
 });
 stream.on("close", function() {
   shutdown();

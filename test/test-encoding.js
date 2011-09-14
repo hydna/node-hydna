@@ -59,7 +59,7 @@ function testBase64() {
   stream.once("data", function(data) {
     equal(data, "base64");
     successfullTests++;
-    stream.close();
+    stream.destroy();
   });
   stream.write("YmFzZTY0", "base64");
 }

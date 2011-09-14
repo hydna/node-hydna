@@ -30,10 +30,10 @@ function parttwo() {
   var errorraised;
   stream = createTestStream("rw");
   stream.on("connect", function() {
-    this._connection.end();
+    this._connection.sock.end();
   });
   stream.on("error", function(exception) {
-    equal(exception.message, "Connection closed by server");
+    equal(exception.message, "Connection reseted by server");
     errorraised = true;
   });
   stream.on("close", function() {

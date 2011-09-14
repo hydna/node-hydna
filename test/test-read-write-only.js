@@ -20,7 +20,7 @@ function partone() {
     ok(this.readable);
     ok(!this.writable);
     equal(this.readyState, "read");
-    stream.close();
+    stream.destroy();
   });
   stream.on("close", function() {
     process.nextTick(parttwo);
@@ -38,7 +38,7 @@ function parttwo() {
     equal(this.readyState, "write");
   });
   stream.on("drain", function() {
-    stream.close();
+    stream.destroy();
   });
   stream.on("data", function() {
     throw new Error("Should not populate data");

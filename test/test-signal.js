@@ -16,7 +16,7 @@ stream.on("connect", function() {
 });
 stream.on("signal", function(data) {
   equal(data, "pong");
-  stream.close();
+  stream.destroy();
 });
 stream.on("close", function() {
   shutdown();
