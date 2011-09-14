@@ -1,7 +1,7 @@
 const ok                  = require("assert").ok
     , timeout             = require("./common").timeout
     , shutdown            = require("./common").shutdown
-    , Stream              = require("../lib/hydna").Stream
+    , Stream              = require("../index").Stream
 
 const TEST_ZONE           = require("./common").TEST_ZONE
 
