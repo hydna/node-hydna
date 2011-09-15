@@ -1371,7 +1371,7 @@ function parserImplementation(conn) {
             buffer[offset + 5]) + (buffer[offset + 2] << 24 >>> 0);
 
       desc = buffer[offset + 6];
-      op = desc >> 3 & 0xf;
+      op = ((desc >> 1) & 0xf) >> 2;
       flag = (desc << 1 & 0xf) >> 1;
 
       switch (op) {
