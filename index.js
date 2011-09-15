@@ -35,11 +35,6 @@ var parseUrl              = require("url").parse;
 
 var VERSION               = exports.VERSION   = "1.0rc";
 
-// Handshake related constants
-var HANDSHAKE_HEADER      = "\x44\x4E\x41\x31";
-var HANDSHAKE_SIZE        = HANDSHAKE_HEADER.length + 1;
-var HANDSHAKE_CODE_OFF    = 0x04;
-
 // Stream modes
 var READ                  = 0x01;
 var WRITE                 = 0x02;
@@ -49,22 +44,7 @@ var EMIT                  = 0x04;
 // Packet related sizes
 var MAX_PAYLOAD_SIZE      = 10240;
 
-var SUCCESS               = 0;
-
 var DEFAULT_PORT          = 7010;
-
-// Handshake flags
-var HANDSHAKE_UNKNOWN     = 0x01;
-var HANDSHAKE_SERVER_BUSY = 0x02;
-var HANDSHAKE_BADFORMAT   = 0x03;
-var HANDSHAKE_HOSTNAME    = 0x04;
-var HANDSHAKE_PROTOCOL    = 0x05;
-var HANDSHAKE_SERVERERROR = 0x06;
-
-// Error classes
-var ERR_HANDSHAKE         = 0;
-var ERR_OPEN              = 10;
-var ERR_SIG               = 20;
 
 var ALL_CHANNELS          = 0;
 
@@ -1380,33 +1360,15 @@ function parserImplementation(conn) {
           break;
 
         case 0x1: // OPEN
-          conn.processOpen(
-            ch,
-            flag,
-            buffer,
-            offset + 7,
-            offset + packetlen
-          );
+          conn.processOpen(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
         case 0x2: // DATA
-          conn.processData(
-            ch,
-            flag,
-            buffer,
-            offset + 7,
-            offset + packetlen
-          );
+          conn.processData(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
         case 0x3: // SIGNAL
-          conn.processSignal(
-            ch,
-            flag,
-            buffer,
-            offset + 7,
-            offset + packetlen
-          );
+          conn.processSignal(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
       }
 
