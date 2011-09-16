@@ -355,7 +355,7 @@ Stream.prototype.write = function(data) {
     throw new Error("Cannot send data, max length reach.");
   }
 
-  packet = new DataPacket(this.id, flag, payload);
+  packet = new DataFrame(this.id, flag, payload);
 
   try {
     flushed = this._writeOut(packet);
@@ -409,7 +409,7 @@ Stream.prototype.dispatch = function(data, encoding) {
     throw new Error("Cannot send data, max length reach.");
   }
 
-  packet = new SignalPacket(this.id, SignalPacket.FLAG_EMIT, payload);
+  packet = new SignalFrame(this.id, SignalFrame.FLAG_EMIT, payload);
 
   try {
     flushed = this._writeOut(packet);
@@ -437,7 +437,7 @@ Stream.prototype.end = function(message) {
   }
 
   payload = message ? new Buffer(message, "utf8") : null;
-  this._endsig = new SignalPacket(this.id, SignalPacket.FLAG_END, payload);
+  this._endsig = new SignalFrame(this.id, SignalFrame.FLAG_END, payload);
 
   this.destroy();
 };
@@ -466,7 +466,7 @@ Stream.prototype.destroy = function(err) {
     return;
   }
 
-  sig = this._endsig || new SignalPacket(this.id, SignalPacket.FLAG_END);
+  sig = this._endsig || new SignalFrame(this.id, SignalFrame.FLAG_END);
 
   if (this._request) {
     // Do not send ENDSIG if _request is present. We need to wait for
@@ -956,7 +956,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
 
   switch (flag) {
 
-    case SignalPacket.FLAG_EMIT:
+    case SignalFrame.FLAG_EMIT:
       if (id === ALL_CHANNELS) {
         for (var chanid in channels) {
           chan = channels[chanid];
@@ -971,15 +971,15 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
       }
       break;
 
-    case SignalPacket.FLAG_END:
-    case SignalPacket.FLAG_ERROR:
+    case SignalFrame.FLAG_END:
+    case SignalFrame.FLAG_ERROR:
 
       if (end - start) {
         message = data.toString("utf8", start, end);
       }
 
       if (id === ALL_CHANNELS) {
-        if (flag != SignalPacket.FLAG_END) {
+        if (flag != SignalFrame.FLAG_END) {
           this.destroy(new Error(message || "ERR_UNKNOWN"));
         } else {
           this.destroy(null, message);
@@ -1014,12 +1014,12 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
         // signal.
 
         try {
-          this.write(new SignalPacket(id, SignalPacket.FLAG_END));
+          this.write(new SignalFrame(id, SignalFrame.FLAG_END));
         } catch (writeException) {
           this.destroy(writeException);
         }
 
-        if (flag != SignalPacket.FLAG_END) {
+        if (flag != SignalFrame.FLAG_END) {
           finalizeDestroyChannel(chan, new Error(message || "ERR_UNKNOWN"));
         } else {
           finalizeDestroyChannel(chan, null, message);
@@ -1264,13 +1264,13 @@ OpenRequest.prototype.toBuffer = function() {
 };
 
 
-function DataPacket(id, flag, data) {
+function DataFrame(id, flag, data) {
   this.id = id;
   this.flag = flag;
   this.data = data;
 }
 
-DataPacket.prototype.toBuffer = function() {
+DataFrame.prototype.toBuffer = function() {
   var id = this.id;
   var data = this.data;
   var flag = this.flag;
@@ -1296,19 +1296,19 @@ DataPacket.prototype.toBuffer = function() {
 };
 
 
-function SignalPacket(id, flag, data) {
+function SignalFrame(id, flag, data) {
   this.id = id;
   this.flag = flag;
   this.data = data;
 }
 
 // Signal flags
-SignalPacket.FLAG_EMIT = 0x0;
-SignalPacket.FLAG_END = 0x1;
-SignalPacket.FLAG_ERROR = 0x7;
+SignalFrame.FLAG_EMIT = 0x0;
+SignalFrame.FLAG_END = 0x1;
+SignalFrame.FLAG_ERROR = 0x7;
 
 
-SignalPacket.prototype.toBuffer = function() {
+SignalFrame.prototype.toBuffer = function() {
   var id = this.id;
   var data = this.data;
   var flag = this.flag;
