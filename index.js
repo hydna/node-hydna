@@ -35,11 +35,6 @@ var parseUrl              = require("url").parse;
 
 var VERSION               = exports.VERSION   = "1.0rc";
 
-// Handshake related constants
-var HANDSHAKE_HEADER      = "\x44\x4E\x41\x31";
-var HANDSHAKE_SIZE        = HANDSHAKE_HEADER.length + 1;
-var HANDSHAKE_CODE_OFF    = 0x04;
-
 // Stream modes
 var READ                  = 0x01;
 var WRITE                 = 0x02;
@@ -49,22 +44,7 @@ var EMIT                  = 0x04;
 // Packet related sizes
 var MAX_PAYLOAD_SIZE      = 10240;
 
-var SUCCESS               = 0;
-
 var DEFAULT_PORT          = 7010;
-
-// Handshake flags
-var HANDSHAKE_UNKNOWN     = 0x01;
-var HANDSHAKE_SERVER_BUSY = 0x02;
-var HANDSHAKE_BADFORMAT   = 0x03;
-var HANDSHAKE_HOSTNAME    = 0x04;
-var HANDSHAKE_PROTOCOL    = 0x05;
-var HANDSHAKE_SERVERERROR = 0x06;
-
-// Error classes
-var ERR_HANDSHAKE         = 0;
-var ERR_OPEN              = 10;
-var ERR_SIG               = 20;
 
 var ALL_CHANNELS          = 0;
 
@@ -331,7 +311,7 @@ Stream.prototype.setEncoding = function(encoding) {
  */
 Stream.prototype.write = function(data) {
   var encoding = (typeof arguments[1] == "string" && arguments[1]);
-  var flag = (encoding && arguments[2]) || arguments[2] || 1;
+  var flag = ((encoding && arguments[2]) || arguments[2] || 1) - 1;
   var id = this.id;
   var packet;
   var payload;
@@ -340,13 +320,19 @@ Stream.prototype.write = function(data) {
     throw new Error("Stream is not writable");
   }
 
+  if (flag < 0 || flag > 3 || isNaN(flag)) {
+    throw new Error("Bad priority, expected Number between 1-4");
+  }
+
   if (!data) {
     throw new Error("Expected `data`");
   }
 
   if (Buffer.isBuffer(data)) {
+    flag = flag << 1 | 0; // Set datatype to BINARY
     payload = data;
   } else {
+    flag = flag << 1 | 1; // Set datatype to UTF8
     if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
       throw new Error("Encoding method is not supported");
     }
@@ -527,11 +513,11 @@ function finalizeDestroyChannel(chan, err, message) {
 };
 
 
-Stream.prototype.ondata = function(data, start, end) {
+Stream.prototype.ondata = function(data, start, end, flag) {
   var encoding = this._encoding;
   var message = data.slice(start, end);
 
-  if (encoding) {
+  if (encoding || (flag & 1 == 1)) {
     if (encoding == "json") {
       try {
         message = JSON.parse(message.toString("utf8"));
@@ -545,7 +531,7 @@ Stream.prototype.ondata = function(data, start, end) {
   }
 
   if (this._events && this._events["data"]) {
-    this.emit("data", message);
+    this.emit("data", message, (flag >> 1) + 1);
   }
 };
 
@@ -676,7 +662,6 @@ Connection.getConnection = function(port, host, secure) {
   }
 
   connection = new Connection(id);
-
   connection.connect(port, host, secure);
 
   return connection;
@@ -917,12 +902,12 @@ Connection.prototype.processData = function(id, flag, data, start, end) {
     for (var chanid in channels) {
       chan = channels[chanid];
       if (chan.readable) {
-        chan.ondata && chan.ondata(data, start, end);
+        chan.ondata && chan.ondata(data, start, end, flag);
       }
     }
   } else if ((chan = channels[id])) {
     if (chan.readable) {
-      chan.ondata && chan.ondata(data, start, end);
+      chan.ondata && chan.ondata(data, start, end, flag);
     }
   }
 };
@@ -952,12 +937,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
       break;
 
     case SignalPacket.FLAG_END:
-    case SignalPacket.FLAG_ERR_PROTOCOL:
-    case SignalPacket.FLAG_ERR_OPERATION:
-    case SignalPacket.FLAG_ERR_LIMIT:
-    case SignalPacket.FLAG_ERR_SERVER:
-    case SignalPacket.FLAG_ERR_VIOLATION:
-    case SignalPacket.FLAG_ERR_OTHER:
+    case SignalPacket.FLAG_ERROR:
 
       if (end - start) {
         message = data.toString("utf8", start, end);
@@ -965,7 +945,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
 
       if (id === ALL_CHANNELS) {
         if (flag != SignalPacket.FLAG_END) {
-          this.destroy(new StreamError(ERR_SIG, flag, message));
+          this.destroy(new Error(message || "ERR_UNKNOWN"));
         } else {
           this.destroy(null, message);
         }
@@ -1005,7 +985,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
         }
 
         if (flag != SignalPacket.FLAG_END) {
-          finalizeDestroyChannel(chan, new StreamError(ERR_SIG, flag, message));
+          finalizeDestroyChannel(chan, new Error(message || "ERR_UNKNOWN"));
         } else {
           finalizeDestroyChannel(chan, null, message);
         }
@@ -1089,16 +1069,9 @@ function OpenRequest(conn, id, flag, data) {
 
 
 // Open Flags
-OpenRequest.FLAG_SUCCESS = 0x0;
+OpenRequest.FLAG_ALLOW = 0x0;
 OpenRequest.FLAG_REDIRECT = 0x1;
-OpenRequest.FLAG_FAIL_NA = 0x8;
-OpenRequest.FLAG_FAIL_MODE = 0x9;
-OpenRequest.FLAG_FAIL_PROTOCOL = 0xa;
-OpenRequest.FLAG_FAIL_HOST = 0xb;
-OpenRequest.FLAG_FAIL_AUTH = 0xc;
-OpenRequest.FLAG_FAIL_SERVICE_ERR = 0xd;
-OpenRequest.FLAG_FAIL_SERVICE_NA = 0xe;
-OpenRequest.FLAG_FAIL_OTHER = 0xf;
+OpenRequest.FLAG_DENY = 0x7;
 
 
 OpenRequest.prototype.send = function() {
@@ -1189,7 +1162,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
   var content;
 
   if (this.next) {
-    if (flag == OpenRequest.FLAG_SUCCESS) {
+    if (flag == OpenRequest.FLAG_ALLOW) {
       this.next.destroyAndNext(new Error("Channel is already open"));
     } else {
       this.next.prev = null;
@@ -1202,7 +1175,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
 
   switch (flag) {
 
-    case OpenRequest.FLAG_SUCCESS:
+    case OpenRequest.FLAG_ALLOW:
       this.onresponse(this.id);
       this.destroy();
       break;
@@ -1224,7 +1197,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
 
     default:
       content = (end - start) ? data.toString("utf8", start, end) : null;
-      this.destroy(new StreamError(ERR_OPEN, flag, content));
+      this.destroy(new Error(content || "ERR_OPEN_DENIED"));
       break;
   }
 };
@@ -1237,19 +1210,19 @@ OpenRequest.prototype.toBuffer = function() {
   var buffer;
   var length;
 
-  length = 8 + (data ? data.length : 0);
+  length = 7 + (data ? data.length : 0);
 
   buffer = new Buffer(length);
   buffer[0] = length >>> 8;
   buffer[1] = length % 256;
-  buffer[3] = id >>> 24;
-  buffer[4] = id >>> 16;
-  buffer[5] = id >>> 8;
-  buffer[6] = id % 256;
-  buffer[7] = 0x1 << 4 | flag;
+  buffer[2] = id >>> 24;
+  buffer[3] = id >>> 16;
+  buffer[4] = id >>> 8;
+  buffer[5] = id % 256;
+  buffer[6] = 0x1 << 3 | flag;
 
-  if (length > 8) {
-    data.copy(buffer, 8);
+  if (length > 7) {
+    data.copy(buffer, 7);
   }
 
   return buffer;
@@ -1269,19 +1242,19 @@ DataPacket.prototype.toBuffer = function() {
   var buffer;
   var length;
 
-  length = 8 + (data ? data.length : 0);
+  length = 7 + (data ? data.length : 0);
 
   buffer = new Buffer(length);
   buffer[0] = length >>> 8;
   buffer[1] = length % 256;
-  buffer[3] = id >>> 24;
-  buffer[4] = id >>> 16;
-  buffer[5] = id >>> 8;
-  buffer[6] = id % 256;
-  buffer[7] = 0x2 << 4 | flag;
+  buffer[2] = id >>> 24;
+  buffer[3] = id >>> 16;
+  buffer[4] = id >>> 8;
+  buffer[5] = id % 256;
+  buffer[6] = 0x2 << 3 | flag;
 
-  if (length > 8) {
-    data.copy(buffer, 8);
+  if (length > 7) {
+    data.copy(buffer, 7);
   }
 
   return buffer;
@@ -1297,12 +1270,7 @@ function SignalPacket(id, flag, data) {
 // Signal flags
 SignalPacket.FLAG_EMIT = 0x0;
 SignalPacket.FLAG_END = 0x1;
-SignalPacket.FLAG_ERR_PROTOCOL = 0xa;
-SignalPacket.FLAG_ERR_OPERATION = 0xb;
-SignalPacket.FLAG_ERR_LIMIT = 0xc;
-SignalPacket.FLAG_ERR_SERVER = 0xd;
-SignalPacket.FLAG_ERR_VIOLATION = 0xe;
-SignalPacket.FLAG_ERR_OTHER = 0xf;
+SignalPacket.FLAG_ERROR = 0x7;
 
 
 SignalPacket.prototype.toBuffer = function() {
@@ -1312,19 +1280,19 @@ SignalPacket.prototype.toBuffer = function() {
   var buffer;
   var length;
 
-  length = 8 + (data ? data.length : 0);
+  length = 7 + (data ? data.length : 0);
 
   buffer = new Buffer(length);
   buffer[0] = length >>> 8;
   buffer[1] = length % 256;
-  buffer[3] = id >>> 24;
-  buffer[4] = id >>> 16;
-  buffer[5] = id >>> 8;
-  buffer[6] = id % 256;
-  buffer[7] = 0x3 << 4 | flag;
+  buffer[2] = id >>> 24;
+  buffer[3] = id >>> 16;
+  buffer[4] = id >>> 8;
+  buffer[5] = id % 256;
+  buffer[6] = 0x3 << 3 | flag;
 
-  if (length > 8) {
-    data.copy(buffer, 8);
+  if (length > 7) {
+    data.copy(buffer, 7);
   }
 
   return buffer;
@@ -1366,7 +1334,7 @@ function parserImplementation(conn) {
 
       packetlen = buffer[offset] << 8 | buffer[offset + 1];
 
-      if (packetlen < 0x8) {
+      if (packetlen < 0x7) {
         // Size is lower then packet header. Destroy wire
         return conn.destroy(new Error("bad packet size"));
       }
@@ -1377,47 +1345,30 @@ function parserImplementation(conn) {
         break;
       }
 
-      ch = (buffer[offset + 4] << 16 |
-            buffer[offset + 5] << 8 |
-            buffer[offset + 6]) + (buffer[offset + 3] << 24 >>> 0);
+      ch = (buffer[offset + 3] << 16 |
+            buffer[offset + 4] << 8 |
+            buffer[offset + 5]) + (buffer[offset + 2] << 24 >>> 0);
 
-      op = buffer[offset + 7] >> 4;
-      flag = buffer[offset + 7] & 0xf;
+      desc = buffer[offset + 6];
+      op = ((desc >> 1) & 0xf) >> 2;
+      flag = (desc << 1 & 0xf) >> 1;
 
       switch (op) {
 
+        case 0x0: // NOOP
+          break;
+
         case 0x1: // OPEN
-          conn.processOpen(
-            ch,
-            flag,
-            buffer,
-            offset + 8,
-            offset + packetlen
-          );
+          conn.processOpen(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
         case 0x2: // DATA
-          conn.processData(
-            ch,
-            flag,
-            buffer,
-            offset + 8,
-            offset + packetlen
-          );
+          conn.processData(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
         case 0x3: // SIGNAL
-          conn.processSignal(
-            ch,
-            flag,
-            buffer,
-            offset + 8,
-            offset + packetlen
-          );
+          conn.processSignal(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
-
-        default:
-          return conn.destroy(new Error("Server sent bad op"));
       }
 
       offset += packetlen;
@@ -1451,117 +1402,6 @@ function getBinMode(modeExpr) {
   return result;
 }
 
-/**
- *  ## StreamError
- *
- *  Represents a stream error
- */
-function StreamError(cls, code, message) {
-  this.name = "StreamError";
-  this.cls = cls;
-  this.message = message;
-
-  if (typeof code == "undefined" || code < 0 || code > 0xf) {
-    switch (cls) {
-      case ERR_HANDSHAKE: this.code = HANDSHAKE_UNKNOWN; break;
-      case ERR_OPEN: this.code = OpenRequest.FLAG_FAIL_OTHER; break;
-      default: this.code = SignalPacket.FLAG_ERR_OTHER; break;
-    }
-  } else {
-    this.code = code;
-  }
-
-  if (!message) {
-    switch (cls + code) {
-      case ERR_HANDSHAKE + HANDSHAKE_UNKNOWN:
-        this.message = "Unknown error";
-        break;
-      case ERR_HANDSHAKE + HANDSHAKE_SERVER_BUSY:
-        this.message = "Server is busy";
-        break;
-      case ERR_HANDSHAKE + HANDSHAKE_BADFORMAT:
-        this.message = "Bad handshake request";
-        break;
-      case ERR_HANDSHAKE + HANDSHAKE_HOSTNAME:
-        this.message = "Invalid hostname";
-        break;
-      case ERR_HANDSHAKE + HANDSHAKE_PROTOCOL:
-        this.message = "Protocol not allowed";
-        break;
-      case ERR_HANDSHAKE + HANDSHAKE_SERVERERROR:
-        this.message = "Server error";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_NA:
-        this.message = "Stream is not available";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_MODE:
-        this.message = "Not allowed to open stream with specified mode";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_PROTOCOL:
-        this.message = "Not allowed to open stream with specified protocol";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_HOST:
-        this.message = "Not allowed to open stream from host";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_AUTH:
-        this.message = "Not allowed to open stream with credentials";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_SERVICE_NA:
-        this.message = "Failed to open stream, service is not available";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_SERVICE_ERR:
-        this.message = "Failed to open stream, service error";
-        break;
-      case ERR_OPEN + OpenRequest.FLAG_FAIL_OTHER:
-        this.message = "Failed to open stream, unknown error";
-        break;
-      case ERR_SIG + SignalPacket.FLAG_ERR_PROTOCOL:
-        this.message = "Protocol error";
-        break;
-      case ERR_SIG + SignalPacket.FLAG_ERR_OPERATION:
-        this.message = "Operational error";
-        break;
-      case ERR_SIG + SignalPacket.FLAG_ERR_LIMIT:
-        this.message = "Limit error";
-        break;
-      case ERR_SIG + SignalPacket.FLAG_ERR_SERVER:
-        this.message = "Server error";
-        break;
-      case ERR_SIG + SignalPacket.FLAG_ERR_VIOLATION:
-        this.message = "Violation error";
-        break;
-      case ERR_SIG + SignalPacket.FLAG_ERR_OTHER:
-        this.message = "Unknown error";
-        break;
-    }
-  }
-}
-
-exports.StreamError = StreamError;
-inherits(StreamError, Error);
-
-/**
- *  ### StreamError.toString()
- *
- *  Returns a string representation of this StreamError instance.
- */
-StreamError.prototype.toString = function() {
-  var cls;
-  switch (this.cls) {
-    case ERR_HANDSHAKE: cls = "HANDSHAKERR"; break;
-    case ERR_OPEN: cls = "OPENERR"; break;
-    default: cls = "STREAMERR"; break;
-  }
-  return cls + " 0x" + this.code + ": " + this.message;
-}
-
-function combindBuffers(buffera, starta, enda, bufferb, startb, endb) {
-  var length = (enda - starta) + (endb - startb);
-  var newbuffer = new Buffer(length);
-  buffera.copy(newbuffer, 0, starta, enda);
-  bufferb.copy(newbuffer, (enda - starta), startb, endb);
-  return newbuffer;
-}
 
 function parseURI(s) {
     var m = URI_RE.exec(s) || [];
