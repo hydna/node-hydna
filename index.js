@@ -31,7 +31,6 @@
 var Buffer                = require("buffer").Buffer;
 var EventEmitter          = require("events").EventEmitter;
 var inherits              = require("util").inherits;
-var parseUrl              = require("url").parse;
 
 var VERSION               = exports.VERSION   = "1.0rc";
 
@@ -44,15 +43,10 @@ var EMIT                  = 0x04;
 // Packet related sizes
 var MAX_PAYLOAD_SIZE      = 10240;
 
-var DEFAULT_PORT          = 7010;
-
 var ALL_CHANNELS          = 0;
 
 var VALID_ENCODINGS_RE    = /^(ascii|utf8|base64|json)/i;
 var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
-var ADDR_EXPR_RE = /^(?:([0-9a-f]{1,8})-|([0-9a-f]{1,8})-([0-9a-f]{1,8}))$/i;
-var URI_RE = /(?:hydna:){0,1}([\w\-\.]+)(?::(\d+)){0,1}(?:\/(\d+|x[a-fA-F0-9]+){0,1}){0,1}(?:\?(.+)){0,1}/;
-
 
 
 /**
@@ -69,7 +63,8 @@ exports.createConnection = function(channel, mode, token) {
   return stream;
 }
 
-// Follow 302 redirects.
+// Follow 302 redirects. Adds a `X-Accept-Redirects: no` to the
+// headers of the handshake request.
 exports.followRedirects = true;
 
 // Set the origin in handshakes. Set to `null` to disable
@@ -134,7 +129,6 @@ function Stream() {
   this._mode = null;
   this._writeQueue = null;
   this._encoding = null;
-  this._mode = null;
 
   this.readable = false;
   this.writable = false;
@@ -207,7 +201,7 @@ Object.defineProperty(Stream.prototype, 'uri', {
 });
 
 /**
- *  ### Stream.connect(channel, mode='readwrite', [token])
+ *  ### Stream.connect(url, mode='readwrite')
  *
  *  Opens a stream to the specified ´'channel'´.
  *
@@ -228,60 +222,74 @@ Object.defineProperty(Stream.prototype, 'uri', {
  *      var stream = createConncetion("demo.hydna.net", "read");
  *      stream.write("Hello World!");
  */
-Stream.prototype.connect = function(channel, mode, token) {
+Stream.prototype.connect = function(url, mode) {
+  var parse;
   var self = this;
   var packet;
-  var tokenb;
   var messagesize;
   var request;
   var uri;
   var id;
   var host;
   var mode;
+  var token;
 
   if (this._connecting) {
     throw new Error("Already connecting");
   }
 
-  uri = parseURI(channel);
-  host = uri.host;
-  port = uri.port || DEFAULT_PORT;
-  id = parseInt(uri.id) || 1;
-  mode = getBinMode(mode);
+  if (typeof url !== "string") {
+    throw new Error("bad argument, `url`, expected String");
+  }
 
-  if (!host) {
-    throw new Error("Missing hostname");
+  if (/^http:\/\/|^https:\/\//.test(url) == false) {
+    url = "http://" + url;
+  }
+
+  url = require("url").parse(url);
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("bad protocol, expected `http` or `https`");
+  }
+
+  if (url.pathname && url.pathname.length != 1) {
+    if (url.pathname.substr(0, 2) == "/x") {
+      id = parseInt("0" + url.pathname.substr(1));
+    } else {
+      id = parseInt(url.pathname.substr(1));
+    }
+    if (isNaN(id)) {
+      throw new Error("Invalid channel");
+    }
+  } else {
+    id = 1;
   }
 
   if (id > 0xFFFFFFFF) {
     throw new Error("Invalid channel expected no between x0 and xFFFFFFFF");
   }
 
+  mode = getBinMode(mode);
+
   if (typeof mode !== "number") {
     throw new Error("Invalid mode");
   }
 
-  if (token) {
-    if (Buffer.isBuffer(token)) {
-      tokenb = token;
-    } else {
-      tokenb = new Buffer(token, "utf8");
-    }
-  } else if (uri.token){
-    tokenb = new Buffer(decodeURIComponent(uri.token), "utf8");
+  if (url.query) {
+    token = new Buffer(decodeURIComponent(uri.query), "utf8");
   }
 
   this.id = id;
   this._mode = mode;
   this._connecting = true;
-  this._token = tokenb ? encodeURIComponent(tokenb.toString("utf8")) : "";
+  this._token = url.query ? url.query : "";
 
   this.readable = ((this._mode & READ) == READ);
   this.writable = ((this._mode & WRITE) == WRITE);
   this.emitable = ((this._mode & EMIT) == EMIT);
 
-  this._connection = Connection.getConnection(port, host, false);
-  this._request = this._connection.open(this, id, mode, tokenb);
+  this._connection = Connection.getConnection(url, false);
+  this._request = this._connection.open(this, id, mode, token);
 }
 
 
@@ -636,21 +644,13 @@ Connection.all = {};
 Connection.disposed = {};
 
 
-Connection.getConnection = function(port, host, secure) {
+Connection.getConnection = function(url) {
   var id;
   var connection;
   var datacache = "";
   var lastException;
 
-  if (host.length > 256) {
-    throw new Error("Hostname exceeded size limit");
-  }
-
-  if (secure) {
-    id = "hydnas:" + host + (port && ":" + port || "");
-  } else {
-    id = "hydna:" + host + (port && ":" + port || "");
-  }
+  id = url.protocol + url.host;
 
   if ((connection = Connection.all[id])) {
     return connection;
@@ -662,16 +662,20 @@ Connection.getConnection = function(port, host, secure) {
   }
 
   connection = new Connection(id);
-  connection.connect(port, host, secure);
+  connection.connect(url);
 
   return connection;
 }
 
 
-Connection.prototype.connect = function(port, host, secure) {
+Connection.prototype.connect = function(url) {
   var self = this;
 
-  getSock(port, host, secure, function(err, sock) {
+  if (this.sock) {
+    throw new Error("Socket already connected");
+  }
+
+  getSock(url, function(err, sock) {
     var requests = self.requests;
 
     if (err) {
@@ -726,13 +730,26 @@ Connection.prototype.connect = function(port, host, secure) {
 };
 
 
-function getSock(port, host, secure, C) {
+function getSock(url, C) {
+  var parse = require("url").parse;
   var STATUS_CODES = require("http").STATUS_CODES;
+  var MAX_REDIRECTS = 5;
+  var redirections = 1;
 
-  function dorequest(port, host, secure) {
-    var request = require(secure ? "https" : "http").request;
+  function dorequest(url) {
+    var request;
     var opts;
     var req;
+    var port;
+    var host;
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return C(new Error("Redirect, bad protocol `" + url.protocol + "`"));
+    }
+
+    request = require(url.protocol == "http:" ? "http" : "https").request;
+    host = url.hostname;
+    port = url.port || (url.protocol == "http" ? 80 : 443);
 
     opts = {
       port: port,
@@ -741,6 +758,10 @@ function getSock(port, host, secure, C) {
         "Connection": "Upgrade",
         "Upgrade":    "winksock/1",
       }
+    }
+
+    if (!exports.followRedirects) {
+      opts.headers["X-Accept-Redirects"] = "no";
     }
 
     if (exports.agent) {
@@ -762,21 +783,35 @@ function getSock(port, host, secure, C) {
 
       res.on("end", function() {
         var code = res.statusCode;
+        var url;
         var err;
 
-        if (code == 302) {
-          if (exports.followRedirects) {
-            dorequest()
-          } else {
-            err = new Error("Redirected by host, followRedirects=false");
-            return C(err);
-          }
-        }
-
-        if (msg) {
-          err = new Error(STATUS_CODES[code] + " (" + msg + ")");
-        } else {
-          err = new Error(STATUS_CODES[code]);
+        switch (code) {
+          case 301:
+          case 302:
+          case 307:
+            if (exports.followRedirects) {
+              if (redirections++ == MAX_REDIRECTS) {
+                return C(new Error("Max HTTP redirections reached"));
+              }
+              try {
+                url = parse(res.headers["location"]);
+              } catch (err) {
+                return C(err);
+              }
+              return dorequest(url)
+            } else {
+              err = new Error("Redirected by host, followRedirects=false");
+              return C(err);
+            }
+            break;
+          default:
+            if (msg) {
+              err = new Error(STATUS_CODES[code] + " (" + msg + ")");
+            } else {
+              err = new Error(STATUS_CODES[code]);
+            }
+            break;
         }
 
         return C(err);
@@ -803,7 +838,7 @@ function getSock(port, host, secure, C) {
     req.end();
   }
 
-  dorequest(port, host, secure);
+  dorequest(url);
 }
 
 
@@ -1400,13 +1435,4 @@ function getBinMode(modeExpr) {
   match[3] && (result |= EMIT);
 
   return result;
-}
-
-
-function parseURI(s) {
-    var m = URI_RE.exec(s) || [];
-    return { host: m[1]
-           , port: m[2]
-           , id: (m[3] && m[3][0] == 'x' ? parseInt('0' + m[3]) : m[3])
-           , token: m[4] };
 }
