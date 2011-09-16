@@ -675,57 +675,59 @@ Connection.prototype.connect = function(url) {
     throw new Error("Socket already connected");
   }
 
-  getSock(url, function(err, sock) {
-    var requests = self.requests;
+  process.nextTick(function() {
+    getSock(url, function(err, sock) {
+      var requests = self.requests;
 
-    if (err) {
-      return self.destroy(err);
-    }
+      if (err) {
+        return self.destroy(err);
+      }
 
-    sock.setNoDelay(true);
-    sock.setKeepAlive(true);
+      sock.setNoDelay(true);
+      sock.setKeepAlive(true);
 
-    sock.on("drain", function() {
-      var channels = self.channels;
-      var chan;
+      sock.on("drain", function() {
+        var channels = self.channels;
+        var chan;
 
-      for (var id in channels) {
-        chan = channels[id];
-        if (chan._events && chan._events["drain"]) {
-          chan.emit("drain");
+        for (var id in channels) {
+          chan = channels[id];
+          if (chan._events && chan._events["drain"]) {
+            chan.emit("drain");
+          }
         }
-      }
-    });
+      });
 
-    sock.on("error", function(err) {
-      self.sock = null;
-      self.destroy(err);
-    });
-
-    sock.on("close", function(hadError) {
-      if (hadError == false) {
+      sock.on("error", function(err) {
         self.sock = null;
-        self.destroy(new Error("Connection reseted by server"));
+        self.destroy(err);
+      });
+
+      sock.on("close", function(hadError) {
+        if (hadError == false) {
+          self.sock = null;
+          self.destroy(new Error("Connection reseted by server"));
+        }
+      });
+
+      self.sock = sock;
+      parserImplementation(self)
+
+      if (self.reqRefCount == 0) {
+        // All requests was cancelled before we got a
+        // handshake from server. Dispose us.
+        self.setDisposed(true);
+      }
+
+      try {
+        for (var id in requests) {
+          self.write(requests[id]);
+          requests[id].sent = true;
+        }
+      } catch (writeException) {
+        self.destroy(writeException);
       }
     });
-
-    self.sock = sock;
-    parserImplementation(self)
-
-    if (self.reqRefCount == 0) {
-      // All requests was cancelled before we got a
-      // handshake from server. Dispose us.
-      self.setDisposed(true);
-    }
-
-    try {
-      for (var id in requests) {
-        self.write(requests[id]);
-        requests[id].sent = true;
-      }
-    } catch (writeException) {
-      self.destroy(writeException);
-    }
   });
 };
 
