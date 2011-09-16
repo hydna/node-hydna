@@ -1,18 +1,18 @@
-const Buffer          = require("buffer").Buffer
-    , Stream          = require("../index").Stream
+var Buffer          = require("buffer").Buffer;
+var Channel         = require("../index").Channel;
 
-exports.TEST_ZONE     = "localhost:7010";
-exports.TEST_ADDR     = exports.TEST_ZONE + "/x112233";
+exports.TEST_HOST     = "localhost:7010";
+exports.TEST_CH       = exports.TEST_HOST + "/x112233";
 // 
 var timer = null;
 
-exports.createTestStream = function(mode, ignoreErrors) {
-  var stream = new Stream();
-  stream.connect(exports.TEST_ADDR, mode);
+exports.createTestChannel = function(mode, ignoreErrors) {
+  var chan = new Channel();
+  chan.connect(exports.TEST_CH, mode);
   if (ignoreErrors) {
-    stream.on("error", function() { });
+    chan.on("error", function() { });
   }
-  return stream;
+  return chan;
 }
 
 exports.shutdown = function() {
@@ -33,26 +33,26 @@ exports.streamErrHandler = function(exception) {
 exports.createPayload = function(size) {
   var payload = new Buffer(size);
   var index = size;
-  
+
   while (index--) {
     payload[index] = Math.floor(Math.random() * 256);
   }
-  
+
   return payload
 }
 
 exports.compareBuffers = function(bufferA, bufferB) {
   var index = bufferA.length;
-  
+
   if (index != bufferB.length) {
     return false;
   }
-  
+
   while (index--) {
     if (bufferA[index] != bufferB[index]) {
       return false;
     }
   }
-  
+
   return true;
 }

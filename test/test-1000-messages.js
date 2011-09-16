@@ -1,29 +1,29 @@
-const ok                  = require("assert").ok
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , createTestStream    = require("./common").createTestStream
-    , createPayload       = require("./common").createPayload
-    , compareBuffers      = require("./common").compareBuffers
+var ok                  = require("assert").ok;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var createTestChannel   = require("./common").createTestChannel;
+var createPayload       = require("./common").createPayload;
+var compareBuffers      = require("./common").compareBuffers;
 
-var stream;
+var chan;
 var payload;
 var count = 0;
 
 timeout(2000);
 
 payload = createPayload(512);
-stream = createTestStream("rw");
-stream.on("connect", function() {
+chan = createTestChannel("rw");
+chan.on("connect", function() {
   for(var i = 0; i < 1000; i++) {
-    stream.write(payload);
+    chan.write(payload);
   }
 });
-stream.on("data", function(data) {
+chan.on("data", function(data) {
   ok(compareBuffers(payload, data));
   if (++count == 1000) {
-    stream.destroy();
+    chan.destroy();
   }
 });
-stream.on("close", function() {
+chan.on("close", function() {
   shutdown();
 });

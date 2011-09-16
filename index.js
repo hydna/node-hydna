@@ -29,12 +29,11 @@
 //
 
 var Buffer                = require("buffer").Buffer;
-var EventEmitter          = require("events").EventEmitter;
 var inherits              = require("util").inherits;
+var Stream                = require("stream").Stream;
 
 var VERSION               = exports.VERSION   = "1.0rc";
 
-// Stream modes
 var READ                  = 0x01;
 var WRITE                 = 0x02;
 var READWRITE             = 0x03;
@@ -49,51 +48,54 @@ var VALID_ENCODINGS_RE    = /^(ascii|utf8|base64|json)/i;
 var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 
 
-/**
- *  ## hydna.createConnection(channel, mode, [token])
- *
- *  Construct a new stream object and opens a stream to the
- *  specified `'channel'`.
- *
- *  When the stream is established the `'connect'` event will be emitted.
- */
-exports.createConnection = function(channel, mode, token) {
-  var stream = new Stream();
-  stream.connect(channel, mode, token);
-  return stream;
-}
-
 // Follow 302 redirects. Adds a `X-Accept-Redirects: no` to the
 // headers of the handshake request.
 exports.followRedirects = true;
 
+
 // Set the origin in handshakes. Set to `null` to disable
 exports.origin = require("os").hostname();
+
 
 // Set the agent header in handshakes. Set to `null` to disable
 exports.agent = "node-winsock-client/" + VERSION;
 
+
 /**
- *  ## hydna.Stream
+ *  ## hydna.createChannel(url, mode, [token])
  *
- *  This object is an abstraction of of a TCP or UNIX socket. hydna.Stream
+ *  Construct a new Channel and connect it to `url´ in `"mode"`.
+ *
+ *  When the connection is established the `'connect'` event will be emitted.
+ */
+exports.createChannel = function(url, mode) {
+  var chan = new Channel();
+  chan.connect(url, mode);
+  return chan;
+};
+
+
+/**
+ *  ## hydna.Channel
+ *
+ *  This object is an abstraction of of a TCP or UNIX socket. hydna.Channel
  *  instance implement a duplex stream interface. They can be created by
  *  the user and used as a client (with connect()) or they can be created
  *  by Node and passed to the user through the 'connection' event
  *  of a server.
  *
- *  hydna.Stream instances are EventEmitters with the following events:
+ *  hydna.Channel instances are EventEmitters with the following events:
  *
  *  Event: `'connect'`
  *  `function () { }`
  *
- *  Emitted when a stream connection successfully is established. See connect().
+ *  Emitted when a connection successfully is established. See connect().
  *
  *  Event: `'data'`
  *  `function (data) { }`
  *
  *  Emitted when data is received. The argument data will be a Buffer or String.
- *  Encoding of data is set by stream.setEncoding().
+ *  Encoding of data is set by channel.setEncoding().
  *
  *  Event: `'drain'`
  *  `function () { }`
@@ -110,15 +112,15 @@ exports.agent = "node-winsock-client/" + VERSION;
  *  Event: `'close'`
  *  `function (had_error) { }`
  *
- *  Emitted once the stream is fully closed. The argument had_error is a
- *  boolean which says if the stream was closed due to an error.
+ *  Emitted once the channel is fully closed. The argument had_error is a
+ *  boolean which says if the channel was closed due to an error.
  *
  *  Event: `'signal'`
  *  `function (data) { }`
  *
  *  Emitted when remote server send's a signal.
  */
-function Stream() {
+function Channel() {
   this.id = null;
 
   this._connecting = false;
@@ -129,22 +131,23 @@ function Stream() {
   this._mode = null;
   this._writeQueue = null;
   this._encoding = null;
+  this._url = null;
 
   this.readable = false;
   this.writable = false;
   this.emitable = false;
 }
 
-exports.Stream = Stream;
-inherits(Stream, EventEmitter);
+exports.Channel = Channel;
+inherits(Channel, Stream);
 
 /**
- *  ### Stream.readyState
+ *  ### Channel.readyState
  *
  *  Either `'closed'`, `'closing'`, `'open'`, `'opening'`,
  *  `'read'`, `'write'`, `'readwrite'` and/or `'+emit'`.
  */
-Object.defineProperty(Stream.prototype, 'readyState', {
+Object.defineProperty(Channel.prototype, 'readyState', {
   get: function () {
     var state;
 
@@ -170,43 +173,27 @@ Object.defineProperty(Stream.prototype, 'readyState', {
 });
 
 /**
- *  ### Stream.channel
+ *  ### Channel.url
  *
- *  Returns stream `channel` as a number. Property is `null` if not connected.
+ *  Returns the `url` as a string. Property is `null` if not connected.
  */
-Object.defineProperty(Stream.prototype, 'channel', {
-  get: function () {
-    return this.id && this.id || null;
-  }
-});
-
-/**
- *  ### Stream.uri
- *
- *  Returns stream `uri` as a string. Property is `null` if not connected.
- */
-Object.defineProperty(Stream.prototype, 'uri', {
+Object.defineProperty(Channel.prototype, 'url', {
   get: function () {
     if (!this.id || !this._connection) {
       return null;
     }
 
-    if (!this._uri) {
-      this._uri = this._connection.id + "/" + this.id;
-      this._uri += this._token.length ? "?" + this._token : "";
-    }
-
-    return this._uri;
+    return this._url;
   }
 });
 
 /**
- *  ### Stream.connect(url, mode='readwrite')
+ *  ### Channel.connect(url, mode='readwrite')
  *
- *  Opens a stream to the specified ´'channel'´.
+ *  Connects channel to specified ´'url'´.
  *
  *  This function is asynchronous. When the `'connect'` event is emitted
- *  the stream is established. If there is a problem connecting, the
+ *  once the connection is established. If there is a problem connecting, the
  *  `'connect'` event will not be emitted, the 'error' event will be
  *  emitted with the exception.
  *
@@ -218,11 +205,11 @@ Object.defineProperty(Stream.prototype, 'uri', {
  *
  *  Example:
  *
- *      var createConncetion = require("hydna").createConncetion;
- *      var stream = createConncetion("demo.hydna.net", "read");
- *      stream.write("Hello World!");
+ *      var createChannel = require("hydna").createChannel;
+ *      var chan = createChannel("demo.hydna.net", "read");
+ *      chan.write("Hello World!");
  */
-Stream.prototype.connect = function(url, mode) {
+Channel.prototype.connect = function(url, mode) {
   var parse;
   var self = this;
   var packet;
@@ -282,7 +269,7 @@ Stream.prototype.connect = function(url, mode) {
   this.id = id;
   this._mode = mode;
   this._connecting = true;
-  this._token = url.query ? url.query : "";
+  this._url = url.href;
 
   this.readable = ((this._mode & READ) == READ);
   this.writable = ((this._mode & WRITE) == WRITE);
@@ -294,11 +281,11 @@ Stream.prototype.connect = function(url, mode) {
 
 
 /**
- *  ### Stream.setEncoding(encoding=null)
+ *  ### Channel.setEncoding(encoding=null)
  *
  *  Sets the encoding (either `'ascii'`, `'utf8'`, `'base64'`, `'json'`)
  */
-Stream.prototype.setEncoding = function(encoding) {
+Channel.prototype.setEncoding = function(encoding) {
   if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
     throw new Error("Encoding method not supported");
   }
@@ -306,9 +293,9 @@ Stream.prototype.setEncoding = function(encoding) {
 }
 
 /**
- *  ### Stream.write(data, encoding='ascii', priority=1)
+ *  ### Channel.write(data, encoding='ascii', priority=1)
  *
- *  Sends data on the stream. The second paramter specifies the encoding in
+ *  Sends data on the channel. The second paramter specifies the encoding in
  *  the case of a string--it defaults to ASCII because encoding to UTF8 is
  *  rather slow.
  *
@@ -317,7 +304,7 @@ Stream.prototype.setEncoding = function(encoding) {
  *  queued in user memory. ´'drain'´ will be emitted when the buffer is
  *  again free.
  */
-Stream.prototype.write = function(data) {
+Channel.prototype.write = function(data) {
   var encoding = (typeof arguments[1] == "string" && arguments[1]);
   var flag = ((encoding && arguments[2]) || arguments[2] || 1) - 1;
   var id = this.id;
@@ -325,7 +312,7 @@ Stream.prototype.write = function(data) {
   var payload;
 
   if (!this.writable) {
-    throw new Error("Stream is not writable");
+    throw new Error("Channel is not writable");
   }
 
   if (flag < 0 || flag > 3 || isNaN(flag)) {
@@ -369,9 +356,9 @@ Stream.prototype.write = function(data) {
 
 
 /**
- *  ### Stream.dispatch(data, encoding='utf8')
+ *  ### Channel.dispatch(data, encoding='utf8')
  *
- *  Dispatch a signal on the stream. The second paramter specifies the encoding
+ *  Dispatch a signal on the channel. The second paramter specifies the encoding
  *  in the case of a string--it defaults to UTF8 encoding.
  *
  *  Returns ´true´ if the signal was flushed successfully to the
@@ -379,13 +366,13 @@ Stream.prototype.write = function(data) {
  *  was queued in user memory. ´'drain'´ will be emitted when the buffer is
  *  again free.
  */
-Stream.prototype.dispatch = function(data, encoding) {
+Channel.prototype.dispatch = function(data, encoding) {
   var packet;
   var payload;
   var flushed;
 
   if (!this.emitable) {
-    throw new Error("Stream is not emitable.");
+    throw new Error("Channel is not emitable.");
   }
 
   if (!data) {
@@ -423,12 +410,12 @@ Stream.prototype.dispatch = function(data, encoding) {
 
 
 /**
- *  ### Stream.end([message])
+ *  ### Channel.end([message])
  *
- *  Closes stream for reading, writing and emiting. The optional `message` is
+ *  Closes channel for reading, writing and emiting. The optional `message` is
  *  sent to the endpoint.
  */
-Stream.prototype.end = function(message) {
+Channel.prototype.end = function(message) {
   var packet;
   var payload;
 
@@ -443,7 +430,7 @@ Stream.prototype.end = function(message) {
 };
 
 
-Stream.prototype.destroy = function(err) {
+Channel.prototype.destroy = function(err) {
   var sig;
 
   if (this.destroyed || this._closing || !this.id) {
@@ -474,9 +461,9 @@ Stream.prototype.destroy = function(err) {
 
     this._endsig = sig;
   } else {
-    // Stream is open and we can therefor send ENDSIG immideitnly. This
+    // Channel is open and we can therefor send ENDSIG immideitnly. This
     // can fail, if TCP connection is dead. If so, we can
-    // destroy stream with good conscience.
+    // destroy channel with good conscience.
 
     try {
       this._writeOut(sig);
@@ -521,7 +508,7 @@ function finalizeDestroyChannel(chan, err, message) {
 };
 
 
-Stream.prototype.ondata = function(data, start, end, flag) {
+Channel.prototype.ondata = function(data, start, end, flag) {
   var encoding = this._encoding;
   var message = data.slice(start, end);
 
@@ -544,7 +531,7 @@ Stream.prototype.ondata = function(data, start, end, flag) {
 };
 
 
-Stream.prototype.onsignal = function(data, start, end) {
+Channel.prototype.onsignal = function(data, start, end) {
   var message = null;
 
   if (end - start) {
@@ -558,7 +545,7 @@ Stream.prototype.onsignal = function(data, start, end) {
 
 
 // Internal write method to write raw packets.
-Stream.prototype._writeOut = function(packet) {
+Channel.prototype._writeOut = function(packet) {
   var written;
 
   if (this._writeQueue) {
@@ -572,13 +559,13 @@ Stream.prototype._writeOut = function(packet) {
   } else if (this._connection) {
     return this._connection.write(packet);
   } else {
-    this.destroy(new Error("Stream is not writable"));
+    this.destroy(new Error("Channel is not writable"));
     return false;
   }
 };
 
 
-Stream.prototype._open = function(newid) {
+Channel.prototype._open = function(newid) {
   var flushed = false;
   var queue = this._writeQueue;
   var id = this.id;
@@ -998,7 +985,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
         // User requested to close this channel. This ENDSIG is a
         // response to that request. It is now safe to destroy
         // channel. Note: We are intentionally not sending the message
-        // to the function, because stream is closed according
+        // to the function, because channel is closed according
         // to client.
 
         finalizeDestroyChannel(chan);

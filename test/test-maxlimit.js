@@ -1,22 +1,22 @@
-const throws              = require("assert").throws
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , createTestStream    = require("./common").createTestStream
-    , createPayload       = require("./common").createPayload
+var throws              = require("assert").throws;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var createTestChannel   = require("./common").createTestChannel;
+var createPayload       = require("./common").createPayload;
 
-var stream;
+var chan;
 var payload;
 
 timeout(200);
 
 payload = createPayload(10241);
-stream = createTestStream("rw");
-stream.on("connect", function() {
+chan = createTestChannel("rw");
+chan.on("connect", function() {
   throws(function() {
-    stream.write(payload);
+    chan.write(payload);
   });
-  stream.destroy();
+  chan.destroy();
 });
-stream.on("close", function() {
+chan.on("close", function() {
   shutdown();
 });

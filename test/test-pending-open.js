@@ -1,12 +1,13 @@
-const ok                  = require("assert").ok
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , Stream              = require("../index").Stream
+var ok                  = require("assert").ok;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var Channel             = require("../index").Channel;
 
-const TEST_ZONE           = require("./common").TEST_ZONE
+var TEST_HOST           = require("./common").TEST_HOST
 
-const NO_REQUESTS         = 100;
-var stream;
+var NO_REQUESTS         = 100;
+
+var chan;
 var payload;
 var count = 0;
 
@@ -19,7 +20,7 @@ function onconnect() {
 }
 
 for (var i = 0; i < NO_REQUESTS; i++) {
-  stream = new Stream();
-  stream.connect(TEST_ZONE + "/1", "r");
-  stream.on("connect", onconnect);
+  chan = new Channel();
+  chan.connect(TEST_HOST + "/1", "r");
+  chan.on("connect", onconnect);
 }

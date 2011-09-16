@@ -1,38 +1,35 @@
-const doesNotThrow        = require("assert").doesNotThrow
-    , throws              = require("assert").throws
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , createTestStream    = require("./common").createTestStream
+var doesNotThrow        = require("assert").doesNotThrow;
+var throws              = require("assert").throws;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var createTestChannel   = require("./common").createTestChannel;
 
 throws(function() {
-  createTestStream("readwrite-signal");
+  createTestChannel("readwrite-signal");
 });
 
 throws(function() {
-  createTestStream("not valid");
+  createTestChannel("not valid");
 });
 
 doesNotThrow(function() {
-  console.log("Test 1")
-  createTestStream(null).destroy();
-  console.log("Test 2")
-  createTestStream("r").destroy();
-  console.log("Test 3")
-  createTestStream("r+e").destroy();
-  createTestStream("r+emit").destroy();
-  createTestStream("read").destroy();
-  createTestStream("read+e").destroy();
-  createTestStream("read+emit").destroy();
-  createTestStream("w").destroy();
-  createTestStream("w+e").destroy();
-  createTestStream("w+emit").destroy();
-  createTestStream("write").destroy();
-  createTestStream("write+e").destroy();
-  createTestStream("write+emit").destroy();
-  createTestStream("rw").destroy();
-  createTestStream("rw+e").destroy();
-  createTestStream("rw+emit").destroy();
-  createTestStream("readwrite").destroy();
-  createTestStream("readwrite+e").destroy();
-  createTestStream("readwrite+emit").destroy();
+  createTestChannel(null).destroy();
+  createTestChannel("r").destroy();
+  createTestChannel("r+e").destroy();
+  createTestChannel("r+emit").destroy();
+  createTestChannel("read").destroy();
+  createTestChannel("read+e").destroy();
+  createTestChannel("read+emit").destroy();
+  createTestChannel("w").destroy();
+  createTestChannel("w+e").destroy();
+  createTestChannel("w+emit").destroy();
+  createTestChannel("write").destroy();
+  createTestChannel("write+e").destroy();
+  createTestChannel("write+emit").destroy();
+  createTestChannel("rw").destroy();
+  createTestChannel("rw+e").destroy();
+  createTestChannel("rw+emit").destroy();
+  createTestChannel("readwrite").destroy();
+  createTestChannel("readwrite+e").destroy();
+  createTestChannel("readwrite+emit").destroy();
 });
