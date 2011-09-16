@@ -648,6 +648,19 @@ Connection.getConnection = function(url) {
     return connection;
   }
 
+  // rewrite url if initial token is present.
+  if (url.auth) {
+    url = require("url").parse([
+      url.protocol,
+      "//",
+      url.hostname,
+      "/?t=",
+      url.auth
+    ].join(""));
+    console.log(url);
+  }
+
+
   connection = new Connection(id);
   connection.connect(url);
 
@@ -729,6 +742,7 @@ function getSock(url, C) {
     var req;
     var port;
     var host;
+    var path;
 
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return C(new Error("Redirect, bad protocol `" + url.protocol + "`"));
@@ -737,10 +751,12 @@ function getSock(url, C) {
     request = require(url.protocol == "http:" ? "http" : "https").request;
     host = url.hostname;
     port = url.port || (url.protocol == "http" ? 80 : 443);
+    path = url.path;
 
     opts = {
       port: port,
       host: host,
+      path: path,
       headers: {
         "Connection": "Upgrade",
         "Upgrade":    "winksock/1",
