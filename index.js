@@ -640,7 +640,6 @@ function Connection(id) {
   this.reqRefCount = 0;
   this.channels = {};
   this.requests = {};
-  this._streamRefCount = 0;
   this.sock = null;
 
   Connection.all[id] = this;
@@ -677,49 +676,6 @@ Connection.getConnection = function(port, host, secure) {
   }
 
   connection = new Connection(id);
-
-  // // Sends a handshake packet to remote host.
-  // connection.on("connect", function() {
-  //   var packet = new Buffer(HANDSHAKE_HEADER.length + host.length + 1);
-  //   packet.write(HANDSHAKE_HEADER, "ascii");
-  //   packet[HANDSHAKE_CODE_OFF] = host.length;
-  //   packet.write(host, HANDSHAKE_CODE_OFF + 1, "ascii");
-  //   this.write(packet);
-  // });
-  //
-  // // Waits for a handshake response.
-  // connection.ondata = function(data, start, end) {
-  //   var pending = this._pendingOpenRequests;
-  //   var keys;
-  //
-  //   datacache += data.toString("binary", start, end);
-  //
-  //   if (datacache.length < HANDSHAKE_HEADER.length + 1) {
-  //     return;
-  //   } else if (datacache.length > HANDSHAKE_SIZE) {
-  //     this.destroy(new Error("Bad handshake response packet."));
-  //   } else {
-  //     var code = datacache.charCodeAt(HANDSHAKE_CODE_OFF);
-  //     if (code != SUCCESS) {
-  //         this.destroy(new StreamError(ERR_HANDSHAKE, code));
-  //     } else {
-  //       this._handshaked = true;
-  //       this._connecting = false;
-  //       parserImplementation(this);
-  //
-  //       try {
-  //         for (var key in pending) {
-  //           this.write(pending[key].data);
-  //           pending[key].sent = true;
-  //         }
-  //       } catch (writeException) {
-  //         this.destroy(writeException);
-  //         return;
-  //       }
-  //     }
-  //   }
-  // }
-  //
 
   connection.connect(port, host, secure);
 
