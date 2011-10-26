@@ -32,7 +32,7 @@ var Buffer                = require("buffer").Buffer;
 var inherits              = require("util").inherits;
 var Stream                = require("stream").Stream;
 
-var VERSION               = exports.VERSION   = "1.0rc";
+var VERSION               = require("./package.json").version;
 
 var READ                  = 0x01;
 var WRITE                 = 0x02;
@@ -40,13 +40,15 @@ var READWRITE             = 0x03;
 var EMIT                  = 0x04;
 
 // Packet related sizes
-var MAX_PAYLOAD_SIZE      = 10240;
+var PAYLOAD_MAX_SIZE      = 0xFFFFF8;
 
 var ALL_CHANNELS          = 0;
 
 var VALID_ENCODINGS_RE    = /^(ascii|utf8|base64|json)/i;
 var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 
+
+exports.PAYLOAD_MAX_SIZE = PAYLOAD_MAX_SIZE;
 
 // Follow 302 redirects. Adds a `X-Accept-Redirects: no` to the
 // headers of the handshake request.
@@ -61,65 +63,16 @@ exports.origin = require("os").hostname();
 exports.agent = "node-winsock-client/" + VERSION;
 
 
-/**
- *  ## hydna.createChannel(url, mode, [token])
- *
- *  Construct a new Channel and connect it to `url´ in `"mode"`.
- *
- *  When the connection is established the `'connect'` event will be emitted.
- */
-exports.createChannel = function(url, mode) {
+exports.createChannel = function(url, mode, C) {
   var chan = new Channel();
   chan.connect(url, mode);
+  if (typeof C == "function") {
+    chan.once("connect", C);
+  }
   return chan;
 };
 
 
-/**
- *  ## hydna.Channel
- *
- *  This object is an abstraction of of a TCP or UNIX socket. hydna.Channel
- *  instance implement a duplex stream interface. They can be created by
- *  the user and used as a client (with connect()) or they can be created
- *  by Node and passed to the user through the 'connection' event
- *  of a server.
- *
- *  hydna.Channel instances are EventEmitters with the following events:
- *
- *  Event: `'connect'`
- *  `function () { }`
- *
- *  Emitted when a connection successfully is established. See connect().
- *
- *  Event: `'data'`
- *  `function (data) { }`
- *
- *  Emitted when data is received. The argument data will be a Buffer or String.
- *  Encoding of data is set by channel.setEncoding().
- *
- *  Event: `'drain'`
- *  `function () { }`
- *
- *  Emitted when the write buffer becomes empty. Can be used to
- *  throttle uploads.
- *
- *  Event: `'error'`
- *  `function (exception) { }`
- *
- *  Emitted when an error occurs. The `'close'` event will be called directly
- *  following this event.
- *
- *  Event: `'close'`
- *  `function (had_error) { }`
- *
- *  Emitted once the channel is fully closed. The argument had_error is a
- *  boolean which says if the channel was closed due to an error.
- *
- *  Event: `'signal'`
- *  `function (data) { }`
- *
- *  Emitted when remote server send's a signal.
- */
 function Channel() {
   this.id = null;
 
@@ -141,12 +94,7 @@ function Channel() {
 exports.Channel = Channel;
 inherits(Channel, Stream);
 
-/**
- *  ### Channel.readyState
- *
- *  Either `'closed'`, `'closing'`, `'open'`, `'opening'`,
- *  `'read'`, `'write'`, `'readwrite'` and/or `'+emit'`.
- */
+
 Object.defineProperty(Channel.prototype, 'readyState', {
   get: function () {
     var state;
@@ -172,11 +120,7 @@ Object.defineProperty(Channel.prototype, 'readyState', {
   }
 });
 
-/**
- *  ### Channel.url
- *
- *  Returns the `url` as a string. Property is `null` if not connected.
- */
+
 Object.defineProperty(Channel.prototype, 'url', {
   get: function () {
     if (!this.id || !this._connection) {
@@ -187,32 +131,10 @@ Object.defineProperty(Channel.prototype, 'url', {
   }
 });
 
-/**
- *  ### Channel.connect(url, mode='readwrite')
- *
- *  Connects channel to specified ´'url'´.
- *
- *  This function is asynchronous. When the `'connect'` event is emitted
- *  once the connection is established. If there is a problem connecting, the
- *  `'connect'` event will not be emitted, the 'error' event will be
- *  emitted with the exception.
- *
- *  Available modes:
- *  * read (r) - Open stream in read mode
- *  * write (w) - Open stream in write mode
- *  * readwrite (rw) - Open stream in read-write mode.
- *  * +emit - Open stream with send-signal support (e.g. "rw+emit").
- *
- *  Example:
- *
- *      var createChannel = require("hydna").createChannel;
- *      var chan = createChannel("demo.hydna.net", "read");
- *      chan.write("Hello World!");
- */
+
 Channel.prototype.connect = function(url, mode) {
   var parse;
   var self = this;
-  var packet;
   var messagesize;
   var request;
   var uri;
@@ -277,38 +199,22 @@ Channel.prototype.connect = function(url, mode) {
 
   this._connection = Connection.getConnection(url, false);
   this._request = this._connection.open(this, id, mode, token);
-}
+};
 
 
-/**
- *  ### Channel.setEncoding(encoding=null)
- *
- *  Sets the encoding (either `'ascii'`, `'utf8'`, `'base64'`, `'json'`)
- */
 Channel.prototype.setEncoding = function(encoding) {
   if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
     throw new Error("Encoding method not supported");
   }
   this._encoding = encoding;
-}
+};
 
-/**
- *  ### Channel.write(data, encoding='ascii', priority=1)
- *
- *  Sends data on the channel. The second paramter specifies the encoding in
- *  the case of a string--it defaults to ASCII because encoding to UTF8 is
- *  rather slow.
- *
- *  Returns ´true´ if the entire data was flushed successfully to the
- *  underlying connection. Returns `false` if all or part of the data was
- *  queued in user memory. ´'drain'´ will be emitted when the buffer is
- *  again free.
- */
-Channel.prototype.write = function(data) {
-  var encoding = (typeof arguments[1] == "string" && arguments[1]);
-  var flag = ((encoding && arguments[2]) || arguments[2] || 1) - 1;
+
+Channel.prototype.write = function(data, enc, prio) {
+  var encoding = (typeof enc == "string" && enc);
+  var flag = ((encoding && prio) || prio || 1) - 1;
   var id = this.id;
-  var packet;
+  var frame;
   var payload;
 
   if (!this.writable) {
@@ -338,68 +244,14 @@ Channel.prototype.write = function(data) {
     }
   }
 
-  if (payload.length > MAX_PAYLOAD_SIZE) {
-    throw new Error("Cannot send data, max length reach.");
+  if (payload.length > PAYLOAD_MAX_SIZE) {
+    throw new Error("Payload overflow");
   }
 
-  packet = new DataFrame(this.id, flag, payload);
+  frame = new DataFrame(this.id, flag, payload);
 
   try {
-    flushed = this._writeOut(packet);
-  } catch (writeException) {
-    this.destroy(writeException);
-    return false;
-  }
-
-  return flushed;
-}
-
-
-/**
- *  ### Channel.dispatch(data, encoding='utf8')
- *
- *  Dispatch a signal on the channel. The second paramter specifies the encoding
- *  in the case of a string--it defaults to UTF8 encoding.
- *
- *  Returns ´true´ if the signal was flushed successfully to the
- *  underlying connection. Returns `false` if the all or part of the signal
- *  was queued in user memory. ´'drain'´ will be emitted when the buffer is
- *  again free.
- */
-Channel.prototype.dispatch = function(data, encoding) {
-  var packet;
-  var payload;
-  var flushed;
-
-  if (!this.emitable) {
-    throw new Error("Channel is not emitable.");
-  }
-
-  if (!data) {
-    throw new Error("Expected `data`");
-  }
-
-  if (Buffer.isBuffer(data)) {
-    payload = data;
-  } else {
-    if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
-      throw new Error("Encoding method is not supported");
-    }
-    if (encoding == "json") {
-      payload = new Buffer(JSON.stringify(data), "utf8");
-    } else {
-      payload = new Buffer(data.toString(), encoding);
-    }
-  }
-
-  if (payload.length > MAX_PAYLOAD_SIZE) {
-    throw new Error("Cannot send data, max length reach.");
-  }
-
-  packet = new SignalFrame(this.id, SignalFrame.FLAG_EMIT, payload);
-
-  try {
-    flushed = this._writeOut(packet);
+    flushed = this._writeOut(frame);
   } catch (writeException) {
     this.destroy(writeException);
     return false;
@@ -409,21 +261,59 @@ Channel.prototype.dispatch = function(data, encoding) {
 };
 
 
-/**
- *  ### Channel.end([message])
- *
- *  Closes channel for reading, writing and emiting. The optional `message` is
- *  sent to the endpoint.
- */
+Channel.prototype.dispatch = function(message) {
+  var frame;
+  var payload;
+  var flushed;
+
+  if (!this.emitable) {
+    throw new Error("Channel is not emitable.");
+  }
+
+  if (typeof message !== "undefined" && typeof message !== "string") {
+    throw new Error("Expected 'message' as String");
+  }
+
+  if (message) {
+    payload = new Buffer(message, "utf8");
+
+    if (payload.length > PAYLOAD_MAX_SIZE) {
+      throw new Error("Payload overflow");
+    }
+  }
+
+  frame = new SignalFrame(this.id, SignalFrame.FLAG_EMIT, payload);
+
+  try {
+    flushed = this._writeOut(frame);
+  } catch (writeException) {
+    this.destroy(writeException);
+    return false;
+  }
+
+  return flushed;
+};
+
+
 Channel.prototype.end = function(message) {
-  var packet;
   var payload;
 
   if (this.destroyed || this._closing) {
     return;
   }
 
-  payload = message ? new Buffer(message, "utf8") : null;
+  if (typeof message !== "undefined" && typeof message !== "string") {
+    throw new Error("Expected 'message' as String");
+  }
+
+  if (message) {
+    payload = new Buffer(message, "utf8");
+
+    if (payload.length > PAYLOAD_MAX_SIZE) {
+      throw new Error("Payload overflow");
+    }
+  }
+
   this._endsig = new SignalFrame(this.id, SignalFrame.FLAG_END, payload);
 
   this.destroy();
@@ -521,7 +411,12 @@ Channel.prototype.ondata = function(data, start, end, flag) {
         return;
       }
     } else {
-      message = message.toString(encoding);
+      try {
+        message = message.toString(encoding);
+      } catch (exception) {
+        this.destroy(exception);
+        return;
+      }
     }
   }
 
@@ -565,7 +460,7 @@ Channel.prototype._writeOut = function(packet) {
 };
 
 
-Channel.prototype._open = function(newid) {
+Channel.prototype._open = function(newid, message) {
   var flushed = false;
   var queue = this._writeQueue;
   var id = this.id;
@@ -605,7 +500,7 @@ Channel.prototype._open = function(newid) {
     }
   }
 
-  this.emit("connect");
+  this.emit("connect", message);
 
   if (flushed) {
     this.emit("drain");
@@ -862,8 +757,8 @@ Connection.prototype.open = function(chan, id, mode, token) {
 
   request = new OpenRequest(this, id, mode, token);
 
-  request.onresponse = function(newid) {
-    chan._open(newid);
+  request.onresponse = function(newid, message) {
+    chan._open(newid, message);
   };
 
   request.onclose = function(err) {
@@ -913,9 +808,9 @@ Connection.prototype.setDisposed = function(state) {
 
 
 // Write a `Packet` to the underlying socket.
-Connection.prototype.write = function(packet) {
+Connection.prototype.write = function(frame) {
   if (this.sock) {
-    return this.sock.write(packet.toBuffer());
+    return this.sock.write(frame.toBuffer());
   } else {
     return false;
   }
@@ -1198,8 +1093,9 @@ OpenRequest.prototype.destroyAndNext = function(err) {
 OpenRequest.prototype.processResponse = function(flag, data, start, end) {
   var conn = this.conn;
   var request;
-  var err;
-  var content;
+  var newid;
+  var message;
+  var len;
 
   if (this.next) {
     if (flag == OpenRequest.FLAG_ALLOW) {
@@ -1213,31 +1109,52 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
     delete conn.requests[this.id];
   }
 
+  len = end - start;
+
   switch (flag) {
 
     case OpenRequest.FLAG_ALLOW:
-      this.onresponse(this.id);
+      if (len) {
+        try {
+          message = data.toString("utf8", start, end);
+        } catch (err) {
+          this.destroy(err);
+          return;
+        }
+      }
+      this.onresponse(this.id, message);
       this.destroy();
       break;
 
     case OpenRequest.FLAG_REDIRECT:
 
-      if (end - start != 4) {
+      if (len < 4) {
         conn.destroy(new Error("Bad open resp"));
         return;
       }
 
-      content = (data[start + 1] << 16 |
-                 data[start + 2] << 8 |
-                 data[start + 3]) + (data[start] << 24 >>> 0);
+      newid = (data[start + 1] << 16 |
+               data[start + 2] << 8 |
+               data[start + 3]) + (data[start] << 24 >>> 0);
 
-      this.onresponse(content);
+      if (len > 4) {
+        try {
+          message = data.toString("utf8", start + 4, end);
+        } catch (err) {
+          this.destroy(err);
+          return;
+        }
+      }
+
+      this.onresponse(newid, message);
       this.destroy();
       break;
 
     default:
-      content = (end - start) ? data.toString("utf8", start, end) : null;
-      this.destroy(new Error(content || "ERR_OPEN_DENIED"));
+      try {
+        message = len ? data.toString("utf8", start, end) : null;
+      } catch (err) {}
+      this.destroy(new Error(message || "ERR_OPEN_DENIED"));
       break;
   }
 };

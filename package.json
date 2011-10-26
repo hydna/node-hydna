@@ -6,6 +6,9 @@
 	"homepage": "https://github.com/hydna/node-hydna",
 	"author": "Hydna AB <info@hydna.com> (http://www.hydna.com/)",
   "main": "./index",
+  "scripts": {
+    "test": "scripts/test.js -r test"
+  },
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/hydna/node-hydna.git"
