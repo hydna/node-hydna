@@ -9,7 +9,7 @@ var chan;
 var payload;
 var count = 0;
 
-timeout(2000);
+timeout(5000);
 
 payload = createPayload(512);
 chan = createTestChannel("rw");

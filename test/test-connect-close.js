@@ -8,7 +8,7 @@ var chanErrHandler      = require("./common").chanErrHandler;
 
 var chan;
 
-timeout(1000);
+timeout(5000);
 
 chan = createTestChannel("rw");
 chan.on("connect", function() {

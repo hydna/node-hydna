@@ -7,7 +7,7 @@ var chan;
 var payload;
 var count = 0;
 
-timeout(2000);
+timeout(5000);
 
 chan = createTestChannel("rw+e");
 chan.setEncoding("utf8");

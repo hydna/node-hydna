@@ -5,7 +5,7 @@ var timeout             = require("./common").timeout;
 var shutdown            = require("./common").shutdown;
 var createTestChannel    = require("./common").createTestChannel;
 
-timeout(1000);
+timeout(5000);
 
 function partone() {
   var chan;

@@ -4,12 +4,14 @@ var shutdown            = require("./common").shutdown;
 var createTestChannel   = require("./common").createTestChannel;
 var createPayload       = require("./common").createPayload;
 
+var PAYLOAD_MAX_SIZE    = require("../index").PAYLOAD_MAX_SIZE;
+
 var chan;
 var payload;
 
-timeout(200);
+timeout(5000);
 
-payload = createPayload(10241);
+payload = createPayload(PAYLOAD_MAX_SIZE + 1);
 chan = createTestChannel("rw");
 chan.on("connect", function() {
   throws(function() {

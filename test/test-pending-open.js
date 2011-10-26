@@ -11,7 +11,7 @@ var chan;
 var payload;
 var count = 0;
 
-timeout(2000);
+timeout(5000);
 
 function onconnect() {
   if (++count == NO_REQUESTS) {
