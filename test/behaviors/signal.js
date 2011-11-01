@@ -28,10 +28,9 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
-var request = require("request");
 var signal = require("signal");
 
-if (request.getToken() == "ping") {
+if (script.env.TOKEN == "ping") {
   signal.reply("pong");
 } else {
   signal.reply("bad token");

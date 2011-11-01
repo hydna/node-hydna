@@ -3,15 +3,24 @@ var Channel         = require("../index").Channel;
 
 exports.TEST_HOST     = process.env["TEST_ADDRESS"] || "localhost:7010";
 exports.TEST_CH       = exports.TEST_HOST + "/x112233";
-// 
+
 var timer = null;
 
 exports.createTestChannel = function(mode, ignoreErrors) {
   var chan = new Channel();
-  chan.connect(exports.TEST_CH, mode);
+  var url = exports.TEST_CH;
+
+  if (typeof ignoreErrors == "number") {
+    url = exports.TEST_HOST + "/" + ignoreErrors;
+    ignoreErrors = false;
+  }
+
+  chan.connect(url, mode);
+
   if (ignoreErrors) {
     chan.on("error", function() { });
   }
+
   return chan;
 }
 

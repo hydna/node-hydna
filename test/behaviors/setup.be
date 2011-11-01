@@ -37,25 +37,42 @@
 
 namespace = "test"
   script = "redirect"
-    source = "./redirect.js"
+    path = "./redirect.js"
   end
 
   script = "pong"
-    source = "./signal.js"
+    path = "./signal.js"
   end
 end
 
-directive
 
-  channel = "0x00000001"
-    exec = "test:redirect"
+directive = "connect"
+
+  token = "redirect"
+    redirect("http://192.168.0.17")
   end
 
-  action = "emit"
-    channel = "0x00112233"
-      exec = "test:pong"
-    end
+end
+
+
+directive = "open"
+
+  channel = 0x1
+    run("test:redirect")
   end
 
-  allow
+  channel = 0x2
+    allow("OK")
+  end
+
+  channel = 0x3
+    deny("NOT_ALLOWED")
+  end
+
+end
+
+directive = "emit"
+  channel = 0x00112233
+    run("test:pong")
+  end
 end
