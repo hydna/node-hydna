@@ -43,13 +43,26 @@ namespace = "test"
   script = "pong"
     path = "./signal.js"
   end
+
+  flag = "redirected"
+    connection    
+  end
+
 end
 
 
 directive = "connect"
 
   token = "redirect"
-    redirect("http://192.168.0.17")
+    redirect("http://localhost:7010/redirected")
+  end
+
+  token = "redirected"
+    set("test:redirected")
+  end
+
+  token = "deny"
+    deny("DENIED_HANDSHAKE")
   end
 
 end
@@ -67,6 +80,13 @@ directive = "open"
 
   channel = 0x3
     deny("NOT_ALLOWED")
+  end
+
+  channel = 0x5
+    when = state("test:redirected")
+      allow("REDIRECTED")
+    end
+    deny("NOT_REDIRECTED")
   end
 
 end

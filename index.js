@@ -549,10 +549,10 @@ Connection.getConnection = function(url) {
       url.protocol,
       "//",
       url.hostname,
-      "/?t=",
+      url.port ? ":" + url.port : "",
+      "/",
       url.auth
     ].join(""));
-    console.log(url);
   }
 
 
@@ -647,8 +647,8 @@ function getSock(url, C) {
 
     request = require(url.protocol == "http:" ? "http" : "https").request;
     host = url.hostname;
-    port = url.port || (url.protocol == "http" ? 80 : 443);
-    path = url.path;
+    port = url.port || (url.protocol == "http:" ? 80 : 443);
+    path = url.pathname;
 
     opts = {
       port: port,
