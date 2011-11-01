@@ -1,23 +1,23 @@
-const equal               = require("assert").equal
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , createTestStream    = require("./common").createTestStream
+var equal               = require("assert").equal;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var createTestChannel    = require("./common").createTestChannel;
 
-var stream;
+var chan;
 var payload;
 var count = 0;
 
-timeout(2000);
+timeout(5000);
 
-stream = createTestStream("rw+e");
-stream.setEncoding("utf8");
-stream.on("connect", function() {
-  stream.dispatch("ping");
+chan = createTestChannel("rw+e");
+chan.setEncoding("utf8");
+chan.on("connect", function() {
+  chan.dispatch("ping");
 });
-stream.on("signal", function(data) {
+chan.on("signal", function(data) {
   equal(data, "pong");
-  stream.close();
+  chan.destroy();
 });
-stream.on("close", function() {
+chan.on("close", function() {
   shutdown();
 });

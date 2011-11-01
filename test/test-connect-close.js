@@ -1,22 +1,22 @@
-const ok                  = require("assert").ok
-    , equal               = require("assert").equal
-    , throws              = require("assert").throws
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , createTestStream    = require("./common").createTestStream
-    , streamErrHandler    = require("./common").streamErrHandler
+var ok                  = require("assert").ok;
+var equal               = require("assert").equal;
+var throws              = require("assert").throws;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var createTestChannel   = require("./common").createTestChannel;
+var chanErrHandler      = require("./common").chanErrHandler;
 
-var stream;
+var chan;
 
-timeout(1000);
+timeout(5000);
 
-stream = createTestStream("rw");
-stream.on("connect", function() {
+chan = createTestChannel("rw");
+chan.on("connect", function() {
   ok(this.readable);
   ok(this.writable);
   equal(this.readyState, "readwrite");
-  stream.close();
+  chan.destroy();
 });
-stream.on("close", function() {
+chan.on("close", function() {
   shutdown();
 });

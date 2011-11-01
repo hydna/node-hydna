@@ -1,13 +1,13 @@
-const ok                  = require("assert").ok
-    , throws              = require("assert").throws
-    , doesNotThrow        = require("assert").doesNotThrow
-    , equal               = require("assert").equal
-    , timeout             = require("./common").timeout
-    , shutdown            = require("./common").shutdown
-    , createTestStream    = require("./common").createTestStream
-    , createPayload       = require("./common").createPayload
+var ok                  = require("assert").ok;
+var throws              = require("assert").throws;
+var doesNotThrow        = require("assert").doesNotThrow;
+var equal               = require("assert").equal;
+var timeout             = require("./common").timeout;
+var shutdown            = require("./common").shutdown;
+var createTestChannel   = require("./common").createTestChannel;
+var createPayload       = require("./common").createPayload;
 
-var stream;
+var chan;
 var payload;
 
 timeout(5000);
@@ -15,38 +15,38 @@ timeout(5000);
 payload = createPayload(100);
 
 function partone() {
-  stream = createTestStream("r");
-  stream.on("connect", function() {
+  chan = createTestChannel("r");
+  chan.on("connect", function() {
     ok(this.readable);
     ok(!this.writable);
     equal(this.readyState, "read");
-    stream.close();
+    chan.destroy();
   });
-  stream.on("close", function() {
+  chan.on("close", function() {
     process.nextTick(parttwo);
   });
   throws(function() {
-    stream.write(payload);
+    chan.write(payload);
   });
 }
 
 function parttwo() {
-  stream = createTestStream("w");
-  stream.on("connect", function() {
+  chan = createTestChannel("w");
+  chan.on("connect", function() {
     ok(!this.readable);
     ok(this.writable);
     equal(this.readyState, "write");
   });
-  stream.on("drain", function() {
-    stream.close();
+  chan.on("drain", function() {
+    chan.destroy();
   });
-  stream.on("data", function() {
+  chan.on("data", function() {
     throw new Error("Should not populate data");
   });
-  stream.on("close", function() {
+  chan.on("close", function() {
     shutdown();
   });
-  stream.write(payload);
+  chan.write(payload);
 }
 
 process.nextTick(partone);

@@ -1,19 +1,27 @@
-const Buffer          = require("buffer").Buffer
-    , Stream          = require("../lib/hydna").Stream
-    
+var Buffer          = require("buffer").Buffer;
+var Channel         = require("../index").Channel;
 
-exports.TEST_ZONE     = "localhost:7010";
-exports.TEST_ADDR     = exports.TEST_ZONE + "/x112233";
-// 
+exports.TEST_HOST     = process.env["TEST_ADDRESS"] || "localhost:7010";
+exports.TEST_CH       = exports.TEST_HOST + "/x112233";
+
 var timer = null;
 
-exports.createTestStream = function(mode, ignoreErrors) {
-  var stream = new Stream();
-  stream.connect(exports.TEST_ADDR, mode);
-  if (ignoreErrors) {
-    stream.on("error", function() { });
+exports.createTestChannel = function(mode, ignoreErrors) {
+  var chan = new Channel();
+  var url = exports.TEST_CH;
+
+  if (typeof ignoreErrors == "number") {
+    url = exports.TEST_HOST + "/" + ignoreErrors;
+    ignoreErrors = false;
   }
-  return stream;
+
+  chan.connect(url, mode);
+
+  if (ignoreErrors) {
+    chan.on("error", function() { });
+  }
+
+  return chan;
 }
 
 exports.shutdown = function() {
@@ -34,26 +42,26 @@ exports.streamErrHandler = function(exception) {
 exports.createPayload = function(size) {
   var payload = new Buffer(size);
   var index = size;
-  
+
   while (index--) {
     payload[index] = Math.floor(Math.random() * 256);
   }
-  
+
   return payload
 }
 
 exports.compareBuffers = function(bufferA, bufferB) {
   var index = bufferA.length;
-  
+
   if (index != bufferB.length) {
     return false;
   }
-  
+
   while (index--) {
     if (bufferA[index] != bufferB[index]) {
       return false;
     }
   }
-  
+
   return true;
 }
