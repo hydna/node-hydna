@@ -28,6 +28,6 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
-var request = require("request");
+var connection = require("connection");
 
-request.redirect(Math.floor(Math.random() * 0xFFFFFFFF) % 0xFFFFFFFF);
+connection.redirect(Math.floor(Math.random() * 0xFFFFFFFF) % 0xFFFFFFFF);
