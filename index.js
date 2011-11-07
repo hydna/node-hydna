@@ -544,17 +544,14 @@ Connection.getConnection = function(url) {
   }
 
   // rewrite url if initial token is present.
-  if (url.auth) {
-    url = require("url").parse([
-      url.protocol,
-      "//",
-      url.hostname,
-      url.port ? ":" + url.port : "",
-      "/",
-      url.auth
-    ].join(""));
-  }
-
+  url = require("url").parse([
+    url.protocol,
+    "//",
+    url.hostname,
+    url.port ? ":" + url.port : "",
+    "/",
+    url.auth
+  ].join(""));
 
   connection = new Connection(id);
   connection.connect(url);
