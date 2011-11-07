@@ -532,7 +532,7 @@ Connection.getConnection = function(url) {
   var datacache = "";
   var lastException;
 
-  id = url.protocol + url.host;
+  id = url.protocol + url.host + (url.auth && (":" + url.auth) || "");
 
   if ((connection = Connection.all[id])) {
     return connection;
