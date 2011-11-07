@@ -45,7 +45,7 @@ namespace = "test"
   end
 
   flag = "redirected"
-    connection    
+    connection
   end
 
 end
