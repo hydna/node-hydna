@@ -35,22 +35,6 @@
 
 
 
-namespace = "test"
-  script = "redirect"
-    path = "./redirect.js"
-  end
-
-  script = "pong"
-    path = "./signal.js"
-  end
-
-  flag = "redirected"
-    connection
-  end
-
-end
-
-
 directive = "connect"
 
   token = "redirect"
@@ -58,7 +42,7 @@ directive = "connect"
   end
 
   token = "redirected"
-    set("test:redirected")
+    run("./set_redirected.js")
   end
 
   token = "deny"
@@ -71,7 +55,8 @@ end
 directive = "open"
 
   channel = 0x1
-    run("test:redirect")
+    run("./redirect.js")
+    redirect($CODE)
   end
 
   channel = 0x2
@@ -83,7 +68,8 @@ directive = "open"
   end
 
   channel = 0x5
-    when = state("test:redirected")
+    run("./get_redirected.js")
+    when = $CODE
       allow("REDIRECTED")
     end
     deny("NOT_REDIRECTED")
@@ -93,6 +79,6 @@ end
 
 directive = "emit"
   channel = 0x00112233
-    run("test:pong")
+    run("./signal.js")
   end
 end

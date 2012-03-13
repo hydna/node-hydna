@@ -1,5 +1,5 @@
 //
-//        Copyright 2011 Hydna AB. All rights reserved.
+//        Copyright 2011-2012 Hydna AB. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions
@@ -28,10 +28,9 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
-var signal = require("signal");
 
 if (script.env.TOKEN == "ping") {
-  signal.reply("pong");
+  connection.reply("pong");
 } else {
-  signal.reply("bad token");
+  connection.reply("bad token");
 }
