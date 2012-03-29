@@ -576,7 +576,7 @@ Connection.prototype.connect = function(url) {
       }
 
       sock.setNoDelay(true);
-      sock.setKeepAlive(true);
+      sock.setKeepAlive && sock.setKeepAlive(true);
 
       sock.on("drain", function() {
         var channels = self.channels;
