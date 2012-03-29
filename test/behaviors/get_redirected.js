@@ -1,5 +1,5 @@
 //
-//        Copyright 2011 Hydna AB. All rights reserved.
+//        Copyright 2011-2012 Hydna AB. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions
@@ -29,4 +29,4 @@
 //
 
 
-exit(Math.floor(Math.random() * 0xFFFFFFFF) % 0xFFFFFFFF);
+exit(connection.get("redirected") == "yes" ? 1 : 0);
