@@ -40,7 +40,7 @@ var READWRITE             = 0x03;
 var EMIT                  = 0x04;
 
 // Packet related sizes
-var PAYLOAD_MAX_SIZE      = 0xFFFFF8;
+var PAYLOAD_MAX_SIZE      = 0xFFF8;
 
 var ALL_CHANNELS          = 0;
 
