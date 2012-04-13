@@ -35,7 +35,7 @@
 
 
 
-directive = "connect"
+connect
 
   token = "redirect"
     redirect("http://localhost:7010/redirected")
@@ -52,7 +52,7 @@ directive = "connect"
 end
 
 
-directive = "open"
+open
 
   channel = 0x1
     run("./redirect.js")
@@ -77,7 +77,7 @@ directive = "open"
 
 end
 
-directive = "emit"
+emit
   channel = 0x00112233
     run("./signal.js")
   end
