@@ -603,7 +603,6 @@ Connection.prototype.connect = function(url) {
       });
 
       self.sock = sock;
-      parserImplementation(self)
 
       if (self.reqRefCount == 0) {
         // All requests was cancelled before we got a
@@ -619,6 +618,11 @@ Connection.prototype.connect = function(url) {
       } catch (writeException) {
         self.destroy(writeException);
       }
+
+      process.nextTick(function () {
+        sock.resume();
+        parserImplementation(self);
+      });
     });
   });
 };
@@ -723,7 +727,6 @@ function getSock(url, C) {
       sock.setTimeout(0);
       sock.removeAllListeners("error");
       sock.removeAllListeners("close");
-      sock.resume();
 
       if (res.headers["upgrade"] != "winksock/1") {
         sock.destroy(new Error("Bad protocol version " + res.headers["upgrade"]));
