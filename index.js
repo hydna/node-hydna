@@ -28,7 +28,6 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
-var Buffer                = require('buffer').Buffer;
 var requestHttp           = require('http').request;
 var requestHttps          = require('https').request;
 var inherits              = require('util').inherits;
