@@ -529,7 +529,6 @@ Connection.disposed = {};
 Connection.getConnection = function(url) {
   var id;
   var connection;
-  var datacache = '';
   var lastException;
 
   id = url.protocol + url.host + (url.auth && (':' + url.auth) || '');
