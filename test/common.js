@@ -1,8 +1,8 @@
-var Buffer          = require("buffer").Buffer;
-var Channel         = require("../index").Channel;
+var Buffer          = require('buffer').Buffer;
+var Channel         = require('../index').Channel;
 
-exports.TEST_HOST     = process.env["TEST_ADDRESS"] || "localhost:7010";
-exports.TEST_CH       = exports.TEST_HOST + "/x112233";
+exports.TEST_HOST     = process.env['TEST_ADDRESS'] || 'pipsq.com:8080';
+exports.TEST_CH       = exports.TEST_HOST + '/x112233';
 
 var timer = null;
 
@@ -10,15 +10,15 @@ exports.createTestChannel = function(mode, ignoreErrors) {
   var chan = new Channel();
   var url = exports.TEST_CH;
 
-  if (typeof ignoreErrors == "number") {
-    url = exports.TEST_HOST + "/" + ignoreErrors;
+  if (typeof ignoreErrors == 'number') {
+    url = exports.TEST_HOST + '/' + ignoreErrors;
     ignoreErrors = false;
   }
 
   chan.connect(url, mode);
 
   if (ignoreErrors) {
-    chan.on("error", function() { });
+    chan.on('error', function() { });
   }
 
   return chan;
@@ -31,7 +31,7 @@ exports.shutdown = function() {
 
 exports.timeout = function(timeout) {
   timer = setTimeout(function() {
-    throw new Error("Timeout reached");
+    throw new Error('Timeout reached');
   }, timeout);
 }
 

@@ -25,16 +25,16 @@
 //  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-var print               = require("util").print
-var spawn               = require("child_process").spawn
-var stat                = require("fs").statSync
-var readdir             = require("fs").readdirSync
-var basename            = require("path").basename
-var join                = require("path").join
+var print               = require('util').print
+var spawn               = require('child_process').spawn
+var stat                = require('fs').statSync
+var readdir             = require('fs').readdirSync
+var basename            = require('path').basename
+var join                = require('path').join
 
-var USAGE               = "Usage: test.js [options] filepath or dirpath";
+var USAGE               = 'Usage: test.js [options] filepath or dirpath';
 
-var HELP 								= USAGE + "\n" + "\
+var HELP 								= USAGE + '\n' + '\
 Options:                                                              \n\
   -h, --help             Show this help                               \n\
   -v, --version          Shows current version                        \n\
@@ -42,7 +42,7 @@ Options:                                                              \n\
                          and its subdirectories.                      \n\
     , --usage            Show usage for command                       \n\
     , --silent           Silent-mode.                                 \n\
-    , --logstdout        Print's all data sent to test's stdout       \n";
+    , --logstdout        Print`s all data sent to test`s stdout       \n';
 
 function main() {
   var args = process.argv.slice(2);
@@ -56,9 +56,9 @@ function main() {
   var passes = 0;
 
   while ((arg = args.shift())) {
-    if (arg.substr(0, 2) == "--") {
+    if (arg.substr(0, 2) == '--') {
       opts[arg.substr(2)] = true;
-    } else if (arg[0] == "-") {
+    } else if (arg[0] == '-') {
       opts[arg.substr(1)] = true;
     } else {
       /^(\/|\~|\.)/.test(arg) ? paths.push(arg) :
@@ -98,13 +98,13 @@ function main() {
     var result = [];
     var index = (l - str.length) + 3;
     while (index--) {
-      result.push(".");
+      result.push('.');
     }
-    return result.join("");
+    return result.join('');
   }
 
   function finish() {
-    !opts.silent && console.log("Passed: %s, Failed: %s, Errors: %s",
+    !opts.silent && console.log('Passed: %s, Failed: %s, Errors: %s',
                                 passes, failures, errors);
 
     process.nextTick(function() {
@@ -119,15 +119,15 @@ function main() {
     !s && print(test + dots(test, longest));
 
     exports.test(test, opts, [], function(error, failure) {
-      var secs = "(" + ((new Date().getTime() - now) / 1000) + " sec)";
-      error && ++errors && !s && print("error\n" + error);
-      failure && ++failures && !s && print("failed\n" + failure);
-      !error && !failure && ++passes && !s && print("ok " + secs + "\n");
+      var secs = '(' + ((new Date().getTime() - now) / 1000) + ' sec)';
+      error && ++errors && !s && print('error\n' + error);
+      failure && ++failures && !s && print('failed\n' + failure);
+      !error && !failure && ++passes && !s && print('ok ' + secs + '\n');
       process.nextTick((tests.length && runtests) || finish);
     });
   }
 
-  !opts.silent && console.log("Running %s tests", tests.length);
+  !opts.silent && console.log('Running %s tests', tests.length);
   process.nextTick(runtests);
 }
 
@@ -145,28 +145,28 @@ exports.test = function() {
   var args = Array.prototype.slice.call(arguments);
   var path = args.shift();
   var opts = !Array.isArray(args[0]) &&
-             typeof args[0] !=  "function" ? args.shift() : {};
+             typeof args[0] !=  'function' ? args.shift() : {};
   var execArgs = Array.isArray(args[0]) ? args.shift() : [];
-  var callback = typeof args[0] == "function" ? args.shift() : null;
-  var uargs = [path].concat(typeof arguments[1] == "function" ? [] : args);
+  var callback = typeof args[0] == 'function' ? args.shift() : null;
+  var uargs = [path].concat(typeof arguments[1] == 'function' ? [] : args);
   var proc = spawn(process.execPath, [path].concat(execArgs || []));
   var err = null;
 
   if (opts.logstdout && !opts.silent) {
-    proc.stdout.on("data", function(data) {
+    proc.stdout.on('data', function(data) {
       print(data);
     });
   }
 
-  proc.stderr.on("data", function(error) {
+  proc.stderr.on('data', function(error) {
     err = error;
   });
 
-  proc.on("exit", function(code) {
+  proc.on('exit', function(code) {
     callback && callback(null, err || code);
   });
 
-  opts.debug && proc.stdout.on("data", function(data) {
+  opts.debug && proc.stdout.on('data', function(data) {
     print(data);
   });
 

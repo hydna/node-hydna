@@ -29,8 +29,8 @@
 //
 
 
-if (script.env.TOKEN == "ping") {
-  connection.reply("pong");
+if (script.env.TOKEN == 'ping') {
+  connection.reply('pong');
 } else {
-  connection.reply("bad token");
+  connection.reply('bad token');
 }

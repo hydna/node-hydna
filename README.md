@@ -5,14 +5,14 @@ The node.js hydna library is a straight-forward implementation of the wink binar
 
 Creating a connection:
 
-    var hydna = require("hydna");
-    var channel = hydna.createChannel("localhost", "rw");
+    var hydna = require('hydna');
+    var channel = hydna.createChannel('localhost', 'rw');
 
-    channel.on("connect", function() {
+    channel.on('connect', function() {
       // read/write connection is ready to use 
     });
 
-    channel.on("error", function() {
+    channel.on('error', function() {
       // an error occured when connecting
     });
 
@@ -20,24 +20,24 @@ A read/write channel is opened and event-listeners for connect and error are att
 
 Sending Data:
 
-    var hydna = require("hydna");
-    var channel = hydna.createChannel("localhost", "w");
+    var hydna = require('hydna');
+    var channel = hydna.createChannel('localhost', 'w');
 
-    channel.on("connect", function() {
-      var message = "Hello World!";
-      channel.write(message, "utf8");
+    channel.on('connect', function() {
+      var message = 'Hello World!';
+      channel.write(message, 'utf8');
     });
 
 Opens up a channel for writing and, when the connection has been established and the connect event has been emitted, writes a message.
 
 Receiving data:
 
-    var hydna = require("hydna");
-    var channel = hydna.createChannel("localhost", "r");
+    var hydna = require('hydna');
+    var channel = hydna.createChannel('localhost', 'r');
     
-    channel.setEncoding("utf8");
+    channel.setEncoding('utf8');
     
-    channel.on("data", function(data) {
+    channel.on('data', function(data) {
       console.log(data);
     });
 
@@ -96,14 +96,14 @@ Available modes:
 * read (r) - Open channel in read mode
 * write (w) - Open channel in write mode
 * readwrite (rw) - Open channel in read-write mode.
-* +emit(e) - Open channel with emit-signal support (e.g. "rw+emit").
+* +emit(e) - Open channel with emit-signal support (e.g. 'rw+emit').
 
 This example opens a Channel and writes data too it. The same data
 is received :
 
-    var hydna = require("hydna");
-    var channel = hydna.createChannel("localhost", "w");
-    channel.write("Hello World!");
+    var hydna = require('hydna');
+    var channel = hydna.createChannel('localhost', 'w');
+    channel.write('Hello World!');
 
 
 ### hydna.Channel
@@ -191,14 +191,14 @@ Returns ´true´ if the signal was flushed successfully to the underlying connec
 
 Example:
 
-    var hydna = require("hydna");
-    var channel = hydna.createChannel("localhost", "read+emit");
-    channel.on("signal", function(message) {
-      if (message == "pong") {
-        console.log("Recevied pong from server");
+    var hydna = require('hydna');
+    var channel = hydna.createChannel('localhost', 'read+emit');
+    channel.on('signal', function(message) {
+      if (message == 'pong') {
+        console.log('Recevied pong from server');
       }
     });
-    channel.dispatch("ping");
+    channel.dispatch('ping');
 
 
 
@@ -208,9 +208,9 @@ Closes channel for reading, writing and emitting. The optional `message` is sent
 
 Example:
 
-    var hydna = require("hydna");
-    var channel = hydna.createChannel("localhost", "read");
-    channel.end("good bye!");
+    var hydna = require('hydna');
+    var channel = hydna.createChannel('localhost', 'read');
+    channel.end('good bye!');
 
 
 #### Channel.destroy()

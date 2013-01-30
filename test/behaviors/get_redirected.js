@@ -29,4 +29,4 @@
 //
 
 
-exit(connection.get("redirected") == "yes" ? 1 : 0);
+exit(connection.get('redirected') == 'yes' ? 1 : 0);

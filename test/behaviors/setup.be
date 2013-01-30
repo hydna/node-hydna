@@ -37,16 +37,16 @@
 
 connect
 
-  token = "redirect"
-    redirect("http://localhost:7010/redirected")
+  token = 'redirect'
+    redirect('http://localhost:7010/redirected')
   end
 
-  token = "redirected"
-    run("./set_redirected.js")
+  token = 'redirected'
+    run('./set_redirected.js')
   end
 
-  token = "deny"
-    deny("DENIED_HANDSHAKE")
+  token = 'deny'
+    deny('DENIED_HANDSHAKE')
   end
 
 end
@@ -55,30 +55,30 @@ end
 open
 
   channel = 0x1
-    run("./redirect.js")
+    run('./redirect.js')
     redirect($CODE)
   end
 
   channel = 0x2
-    allow("OK")
+    allow('OK')
   end
 
   channel = 0x3
-    deny("NOT_ALLOWED")
+    deny('NOT_ALLOWED')
   end
 
   channel = 0x5
-    run("./get_redirected.js")
+    run('./get_redirected.js')
     when = $CODE
-      allow("REDIRECTED")
+      allow('REDIRECTED')
     end
-    deny("NOT_REDIRECTED")
+    deny('NOT_REDIRECTED')
   end
 
 end
 
 emit
   channel = 0x00112233
-    run("./signal.js")
+    run('./signal.js')
   end
 end

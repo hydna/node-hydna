@@ -28,4 +28,4 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
-connection.set("redirected", "yes");
+connection.set('redirected', 'yes');

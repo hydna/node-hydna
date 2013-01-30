@@ -28,11 +28,11 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
-var Buffer                = require("buffer").Buffer;
-var inherits              = require("util").inherits;
-var Stream                = require("stream").Stream;
+var Buffer                = require('buffer').Buffer;
+var inherits              = require('util').inherits;
+var Stream                = require('stream').Stream;
 
-var VERSION               = require("./package.json").version;
+var VERSION               = require('./package.json').version;
 
 var READ                  = 0x01;
 var WRITE                 = 0x02;
@@ -56,18 +56,18 @@ exports.followRedirects = true;
 
 
 // Set the origin in handshakes. Set to `null` to disable
-exports.origin = require("os").hostname();
+exports.origin = require('os').hostname();
 
 
 // Set the agent header in handshakes. Set to `null` to disable
-exports.agent = "node-winsock-client/" + VERSION;
+exports.agent = 'node-winsock-client/' + VERSION;
 
 
 exports.createChannel = function(url, mode, C) {
   var chan = new Channel();
   chan.connect(url, mode);
-  if (typeof C == "function") {
-    chan.once("connect", C);
+  if (typeof C == 'function') {
+    chan.once('connect', C);
   }
   return chan;
 };
@@ -100,20 +100,20 @@ Object.defineProperty(Channel.prototype, 'readyState', {
     var state;
 
     if (this._connecting) {
-      return "opening";
+      return 'opening';
     } else if (this._closing) {
-      return "closing";
+      return 'closing';
     } else if (!this.id) {
       return 'closed';
     } else if (this.readable && this.writable) {
-      state = "readwrite";
+      state = 'readwrite';
     } else if (this.readable && !this.writable){
-      state = "read";
+      state = 'read';
     } else if (!this.readable && this.writable){
-      state = "write";
+      state = 'write';
     }
     if (this.emitable) {
-      state += "+emit";
+      state += '+emit';
     }
 
     return state;
@@ -144,48 +144,48 @@ Channel.prototype.connect = function(url, mode) {
   var token;
 
   if (this._connecting) {
-    throw new Error("Already connecting");
+    throw new Error('Already connecting');
   }
 
-  if (typeof url !== "string") {
-    throw new Error("bad argument, `url`, expected String");
+  if (typeof url !== 'string') {
+    throw new Error('bad argument, `url`, expected String');
   }
 
   if (/^http:\/\/|^https:\/\//.test(url) == false) {
-    url = "http://" + url;
+    url = 'http://' + url;
   }
 
-  url = require("url").parse(url);
+  url = require('url').parse(url);
 
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new Error("bad protocol, expected `http` or `https`");
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error('bad protocol, expected `http` or `https`');
   }
 
   if (url.pathname && url.pathname.length != 1) {
-    if (url.pathname.substr(0, 2) == "/x") {
-      id = parseInt("0" + url.pathname.substr(1));
+    if (url.pathname.substr(0, 2) == '/x') {
+      id = parseInt('0' + url.pathname.substr(1));
     } else {
       id = parseInt(url.pathname.substr(1));
     }
     if (isNaN(id)) {
-      throw new Error("Invalid channel");
+      throw new Error('Invalid channel');
     }
   } else {
     id = 1;
   }
 
   if (id > 0xFFFFFFFF) {
-    throw new Error("Invalid channel expected no between x0 and xFFFFFFFF");
+    throw new Error('Invalid channel expected no between x0 and xFFFFFFFF');
   }
 
   mode = getBinMode(mode);
 
-  if (typeof mode !== "number") {
-    throw new Error("Invalid mode");
+  if (typeof mode !== 'number') {
+    throw new Error('Invalid mode');
   }
 
   if (url.query) {
-    token = new Buffer(decodeURIComponent(uri.query), "utf8");
+    token = new Buffer(decodeURIComponent(uri.query), 'utf8');
   }
 
   this.id = id;
@@ -204,29 +204,29 @@ Channel.prototype.connect = function(url, mode) {
 
 Channel.prototype.setEncoding = function(encoding) {
   if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
-    throw new Error("Encoding method not supported");
+    throw new Error('Encoding method not supported');
   }
   this._encoding = encoding;
 };
 
 
 Channel.prototype.write = function(data, enc, prio) {
-  var encoding = (typeof enc == "string" && enc);
+  var encoding = (typeof enc == 'string' && enc);
   var flag = ((encoding && prio) || prio || 1) - 1;
   var id = this.id;
   var frame;
   var payload;
 
   if (!this.writable) {
-    throw new Error("Channel is not writable");
+    throw new Error('Channel is not writable');
   }
 
   if (flag < 0 || flag > 3 || isNaN(flag)) {
-    throw new Error("Bad priority, expected Number between 1-4");
+    throw new Error('Bad priority, expected Number between 1-4');
   }
 
   if (!data) {
-    throw new Error("Expected `data`");
+    throw new Error('Expected `data`');
   }
 
   if (Buffer.isBuffer(data)) {
@@ -235,17 +235,17 @@ Channel.prototype.write = function(data, enc, prio) {
   } else {
     flag = flag << 1 | 1; // Set datatype to UTF8
     if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
-      throw new Error("Encoding method is not supported");
+      throw new Error('Encoding method is not supported');
     }
-    if (encoding == "json") {
-      payload = new Buffer(JSON.stringify(data), "utf8");
+    if (encoding == 'json') {
+      payload = new Buffer(JSON.stringify(data), 'utf8');
     } else {
       payload = new Buffer(data.toString(), encoding);
     }
   }
 
   if (payload.length > PAYLOAD_MAX_SIZE) {
-    throw new Error("Payload overflow");
+    throw new Error('Payload overflow');
   }
 
   frame = new DataFrame(this.id, flag, payload);
@@ -267,18 +267,18 @@ Channel.prototype.dispatch = function(message) {
   var flushed;
 
   if (!this.emitable) {
-    throw new Error("Channel is not emitable.");
+    throw new Error('Channel is not emitable.');
   }
 
-  if (typeof message !== "undefined" && typeof message !== "string") {
-    throw new Error("Expected 'message' as String");
+  if (typeof message !== 'undefined' && typeof message !== 'string') {
+    throw new Error('Expected "message" as String');
   }
 
   if (message) {
-    payload = new Buffer(message, "utf8");
+    payload = new Buffer(message, 'utf8');
 
     if (payload.length > PAYLOAD_MAX_SIZE) {
-      throw new Error("Payload overflow");
+      throw new Error('Payload overflow');
     }
   }
 
@@ -302,15 +302,15 @@ Channel.prototype.end = function(message) {
     return;
   }
 
-  if (typeof message !== "undefined" && typeof message !== "string") {
-    throw new Error("Expected 'message' as String");
+  if (typeof message !== 'undefined' && typeof message !== 'string') {
+    throw new Error('Expected "message" as String');
   }
 
   if (message) {
-    payload = new Buffer(message, "utf8");
+    payload = new Buffer(message, 'utf8');
 
     if (payload.length > PAYLOAD_MAX_SIZE) {
-      throw new Error("Payload overflow");
+      throw new Error('Payload overflow');
     }
   }
 
@@ -392,9 +392,9 @@ function finalizeDestroyChannel(chan, err, message) {
   chan._writequeue = null;
   chan._connection = null;
 
-  err && chan.emit("error", err);
+  err && chan.emit('error', err);
 
-  chan.emit("close", !(!err), message);
+  chan.emit('close', !(!err), message);
 };
 
 
@@ -403,9 +403,9 @@ Channel.prototype.ondata = function(data, start, end, flag) {
   var message = data.slice(start, end);
 
   if (encoding || (flag & 1 == 1)) {
-    if (encoding == "json") {
+    if (encoding == 'json') {
       try {
-        message = JSON.parse(message.toString("utf8"));
+        message = JSON.parse(message.toString('utf8'));
       } catch (exception) {
         this.destroy(exception);
         return;
@@ -420,8 +420,8 @@ Channel.prototype.ondata = function(data, start, end, flag) {
     }
   }
 
-  if (this._events && this._events["data"]) {
-    this.emit("data", message, (flag >> 1) + 1);
+  if (this._events && this._events['data']) {
+    this.emit('data', message, (flag >> 1) + 1);
   }
 };
 
@@ -430,11 +430,11 @@ Channel.prototype.onsignal = function(data, start, end) {
   var message = null;
 
   if (end - start) {
-    message = data.toString("utf8", start, end);
+    message = data.toString('utf8', start, end);
   }
 
-  if (this._events && this._events["signal"]) {
-    this.emit("signal", message);
+  if (this._events && this._events['signal']) {
+    this.emit('signal', message);
   }
 };
 
@@ -454,7 +454,7 @@ Channel.prototype._writeOut = function(packet) {
   } else if (this._connection) {
     return this._connection.write(packet);
   } else {
-    this.destroy(new Error("Channel is not writable"));
+    this.destroy(new Error('Channel is not writable'));
     return false;
   }
 };
@@ -500,10 +500,10 @@ Channel.prototype._open = function(newid, message) {
     }
   }
 
-  this.emit("connect", message);
+  this.emit('connect', message);
 
   if (flushed) {
-    this.emit("drain");
+    this.emit('drain');
   }
 };
 
@@ -529,10 +529,10 @@ Connection.disposed = {};
 Connection.getConnection = function(url) {
   var id;
   var connection;
-  var datacache = "";
+  var datacache = '';
   var lastException;
 
-  id = url.protocol + url.host + (url.auth && (":" + url.auth) || "");
+  id = url.protocol + url.host + (url.auth && (':' + url.auth) || '');
 
   if ((connection = Connection.all[id])) {
     return connection;
@@ -544,14 +544,14 @@ Connection.getConnection = function(url) {
   }
 
   // rewrite url if initial token is present.
-  url = require("url").parse([
+  url = require('url').parse([
     url.protocol,
-    "//",
+    '//',
     url.hostname,
-    url.port ? ":" + url.port : "",
-    "/",
+    url.port ? ':' + url.port : '',
+    '/',
     url.auth
-  ].join(""));
+  ].join(''));
 
   connection = new Connection(id);
   connection.connect(url);
@@ -564,7 +564,7 @@ Connection.prototype.connect = function(url) {
   var self = this;
 
   if (this.sock) {
-    throw new Error("Socket already connected");
+    throw new Error('Socket already connected');
   }
 
   process.nextTick(function() {
@@ -578,27 +578,27 @@ Connection.prototype.connect = function(url) {
       sock.setNoDelay(true);
       sock.setKeepAlive && sock.setKeepAlive(true);
 
-      sock.on("drain", function() {
+      sock.on('drain', function() {
         var channels = self.channels;
         var chan;
 
         for (var id in channels) {
           chan = channels[id];
-          if (chan._events && chan._events["drain"]) {
-            chan.emit("drain");
+          if (chan._events && chan._events['drain']) {
+            chan.emit('drain');
           }
         }
       });
 
-      sock.on("error", function(err) {
+      sock.on('error', function(err) {
         self.sock = null;
         self.destroy(err);
       });
 
-      sock.on("close", function(hadError) {
+      sock.on('close', function(hadError) {
         if (hadError == false) {
           self.sock = null;
-          self.destroy(new Error("Connection reseted by server"));
+          self.destroy(new Error('Connection reseted by server'));
         }
       });
 
@@ -629,8 +629,8 @@ Connection.prototype.connect = function(url) {
 
 
 function getSock(url, C) {
-  var parse = require("url").parse;
-  var STATUS_CODES = require("http").STATUS_CODES;
+  var parse = require('url').parse;
+  var STATUS_CODES = require('http').STATUS_CODES;
   var MAX_REDIRECTS = 5;
   var redirections = 1;
 
@@ -642,13 +642,13 @@ function getSock(url, C) {
     var host;
     var path;
 
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return C(new Error("Redirect, bad protocol `" + url.protocol + "`"));
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return C(new Error('Redirect, bad protocol `' + url.protocol + '`'));
     }
 
-    request = require(url.protocol == "http:" ? "http" : "https").request;
+    request = require(url.protocol == 'http:' ? 'http' : 'https').request;
     host = url.hostname;
-    port = url.port || (url.protocol == "http:" ? 80 : 443);
+    port = url.port || (url.protocol == 'http:' ? 80 : 443);
     path = url.pathname;
 
     opts = {
@@ -656,33 +656,33 @@ function getSock(url, C) {
       host: host,
       path: path,
       headers: {
-        "Connection": "Upgrade",
-        "Upgrade":    "winksock/1",
+        'Connection': 'Upgrade',
+        'Upgrade':    'winksock/1',
       }
     }
 
     if (!exports.followRedirects) {
-      opts.headers["X-Accept-Redirects"] = "no";
+      opts.headers['X-Accept-Redirects'] = 'no';
     }
 
     if (exports.agent) {
-      opts.headers["User-Agent"] = exports.agent;
+      opts.headers['User-Agent'] = exports.agent;
     }
 
     if (exports.origin) {
-      opts.headers["Origin"] = exports.origin;
+      opts.headers['Origin'] = exports.origin;
     }
 
     req = request(opts, function(res) {
       var msg;
 
-      res.setEncoding("utf8");
+      res.setEncoding('utf8');
 
-      res.on("data", function(chunk) {
+      res.on('data', function(chunk) {
         msg = msg ? msg + chunk : chunk;
       });
 
-      res.on("end", function() {
+      res.on('end', function() {
         var code = res.statusCode;
         var url;
         var err;
@@ -693,22 +693,22 @@ function getSock(url, C) {
           case 307:
             if (exports.followRedirects) {
               if (redirections++ == MAX_REDIRECTS) {
-                return C(new Error("Max HTTP redirections reached"));
+                return C(new Error('Max HTTP redirections reached'));
               }
               try {
-                url = parse(res.headers["location"]);
+                url = parse(res.headers['location']);
               } catch (err) {
                 return C(err);
               }
               return dorequest(url)
             } else {
-              err = new Error("Redirected by host, followRedirects=false");
+              err = new Error('Redirected by host, followRedirects=false');
               return C(err);
             }
             break;
           default:
             if (msg) {
-              err = new Error(STATUS_CODES[code] + " (" + msg + ")");
+              err = new Error(STATUS_CODES[code] + ' (' + msg + ')');
             } else {
               err = new Error(STATUS_CODES[code]);
             }
@@ -719,17 +719,17 @@ function getSock(url, C) {
       });
     });
 
-    req.on("error", function(err) {
+    req.on('error', function(err) {
       return C(err);
     });
 
-    req.on("upgrade", function(res, sock) {
+    req.on('upgrade', function(res, sock) {
       sock.setTimeout(0);
-      sock.removeAllListeners("error");
-      sock.removeAllListeners("close");
+      sock.removeAllListeners('error');
+      sock.removeAllListeners('close');
 
-      if (res.headers["upgrade"] != "winksock/1") {
-        sock.destroy(new Error("Bad protocol version " + res.headers["upgrade"]));
+      if (res.headers['upgrade'] != 'winksock/1') {
+        sock.destroy(new Error('Bad protocol version ' + res.headers['upgrade']));
       }
 
       return C(null, sock);
@@ -750,7 +750,7 @@ Connection.prototype.open = function(chan, id, mode, token) {
 
   if ((oldchan = channels[id]) && !oldchan._closing) {
     process.nextTick(function() {
-      finalizeDestroyChannel(chan, new Error("Channel is already open"));
+      finalizeDestroyChannel(chan, new Error('Channel is already open'));
     });
     return null;
   }
@@ -786,7 +786,7 @@ Connection.prototype.setDisposed = function(state) {
 
     if (sock) {
       sock.setTimeout(200);
-      sock.once("timeout", function() {
+      sock.once('timeout', function() {
         self.destroy();
       });
     }
@@ -801,7 +801,7 @@ Connection.prototype.setDisposed = function(state) {
 
     if (sock) {
       sock.setTimeout(0);
-      sock.removeAllListeners("timeout");
+      sock.removeAllListeners('timeout');
     }
   }
 };
@@ -821,7 +821,7 @@ Connection.prototype.processOpen = function(id, flag, data, start, end) {
   var request;
 
   if (!(request = this.requests[id])) {
-    sock.destroy(new Error("Server sent an open response to unknown"));
+    sock.destroy(new Error('Server sent an open response to unknown'));
     return;
   }
 
@@ -875,12 +875,12 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
     case SignalFrame.FLAG_ERROR:
 
       if (end - start) {
-        message = data.toString("utf8", start, end);
+        message = data.toString('utf8', start, end);
       }
 
       if (id === ALL_CHANNELS) {
         if (flag != SignalFrame.FLAG_END) {
-          this.destroy(new Error(message || "ERR_UNKNOWN"));
+          this.destroy(new Error(message || 'ERR_UNKNOWN'));
         } else {
           this.destroy(null, message);
         }
@@ -920,7 +920,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
         }
 
         if (flag != SignalFrame.FLAG_END) {
-          finalizeDestroyChannel(chan, new Error(message || "ERR_UNKNOWN"));
+          finalizeDestroyChannel(chan, new Error(message || 'ERR_UNKNOWN'));
         } else {
           finalizeDestroyChannel(chan, null, message);
         }
@@ -928,7 +928,7 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
       break;
 
     default:
-      this.destroy(new Error("Server sent an unknown SIGFLAG"));
+      this.destroy(new Error('Server sent an unknown SIGFLAG'));
       return;
   }
 
@@ -1019,7 +1019,7 @@ OpenRequest.prototype.send = function() {
   this.present = true;
 
   if (this.sent) {
-    throw new Error("OpenRequest is already sent");
+    throw new Error('OpenRequest is already sent');
   }
 
 
@@ -1099,7 +1099,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
 
   if (this.next) {
     if (flag == OpenRequest.FLAG_ALLOW) {
-      this.next.destroyAndNext(new Error("Channel is already open"));
+      this.next.destroyAndNext(new Error('Channel is already open'));
     } else {
       this.next.prev = null;
       conn.requests[this.id] = this.next;
@@ -1116,7 +1116,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
     case OpenRequest.FLAG_ALLOW:
       if (len) {
         try {
-          message = data.toString("utf8", start, end);
+          message = data.toString('utf8', start, end);
         } catch (err) {
           this.destroy(err);
           return;
@@ -1129,7 +1129,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
     case OpenRequest.FLAG_REDIRECT:
 
       if (len < 4) {
-        conn.destroy(new Error("Bad open resp"));
+        conn.destroy(new Error('Bad open resp'));
         return;
       }
 
@@ -1139,7 +1139,7 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
 
       if (len > 4) {
         try {
-          message = data.toString("utf8", start + 4, end);
+          message = data.toString('utf8', start + 4, end);
         } catch (err) {
           this.destroy(err);
           return;
@@ -1152,9 +1152,9 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
 
     default:
       try {
-        message = len ? data.toString("utf8", start, end) : null;
+        message = len ? data.toString('utf8', start, end) : null;
       } catch (err) {}
-      this.destroy(new Error(message || "ERR_OPEN_DENIED"));
+      this.destroy(new Error(message || 'ERR_OPEN_DENIED'));
       break;
   }
 };
@@ -1293,7 +1293,7 @@ function parserImplementation(conn) {
 
       if (packetlen < 0x7) {
         // Size is lower then packet header. Destroy wire
-        return conn.destroy(new Error("bad packet size"));
+        return conn.destroy(new Error('bad packet size'));
       }
 
       if (offset + packetlen > length) {
@@ -1348,7 +1348,7 @@ function getBinMode(modeExpr) {
     return 0;
   }
 
-  if (typeof modeExpr !== "string" || !(match = modeExpr.match(MODE_RE))) {
+  if (typeof modeExpr !== 'string' || !(match = modeExpr.match(MODE_RE))) {
     return null;
   }
 

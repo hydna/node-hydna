@@ -1,9 +1,9 @@
-var ok                  = require("assert").ok;
-var timeout             = require("./common").timeout;
-var shutdown            = require("./common").shutdown;
-var Channel             = require("../index").Channel;
+var ok                  = require('assert').ok;
+var timeout             = require('./common').timeout;
+var shutdown            = require('./common').shutdown;
+var Channel             = require('../index').Channel;
 
-var TEST_HOST           = require("./common").TEST_HOST
+var TEST_HOST           = require('./common').TEST_HOST
 
 var NO_REQUESTS         = 100;
 
@@ -21,6 +21,6 @@ function onconnect() {
 
 for (var i = 0; i < NO_REQUESTS; i++) {
   chan = new Channel();
-  chan.connect(TEST_HOST + "/1", "r");
-  chan.on("connect", onconnect);
+  chan.connect(TEST_HOST + '/1', 'r');
+  chan.on('connect', onconnect);
 }
