@@ -66,7 +66,7 @@ exports.origin = require('os').hostname();
 
 
 // Set the agent header in handshakes. Set to `null` to disable
-exports.agent = 'node-winsock-client/' + VERSION;
+exports.agent             = 'node-wink-client/' + VERSION;
 
 
 exports.createChannel = function(url, mode, C) {
