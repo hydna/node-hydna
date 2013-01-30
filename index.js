@@ -91,7 +91,6 @@ function Channel() {
   this.emitable = false;
 }
 
-exports.Channel = Channel;
 inherits(Channel, Stream);
 
 
