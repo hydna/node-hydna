@@ -29,10 +29,16 @@
 //
 
 var Buffer                = require('buffer').Buffer;
+var requestHttp           = require('http').request;
+var requestHttps          = require('https').request;
 var inherits              = require('util').inherits;
+var parseUrl              = require('url').parse;
 var Stream                = require('stream').Stream;
 
 var VERSION               = require('./package.json').version;
+
+var STATUS_CODES          = require('http').STATUS_CODES;
+
 
 var READ                  = 0x01;
 var WRITE                 = 0x02;
@@ -133,7 +139,6 @@ Object.defineProperty(Channel.prototype, 'url', {
 
 
 Channel.prototype.connect = function(url, mode) {
-  var parse;
   var self = this;
   var messagesize;
   var request;
@@ -155,7 +160,7 @@ Channel.prototype.connect = function(url, mode) {
     url = 'http://' + url;
   }
 
-  url = require('url').parse(url);
+  url = parseUrl(url);
 
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
     throw new Error('bad protocol, expected `http` or `https`');
@@ -544,7 +549,7 @@ Connection.getConnection = function(url) {
   }
 
   // rewrite url if initial token is present.
-  url = require('url').parse([
+  url = parseUrl([
     url.protocol,
     '//',
     url.hostname,
@@ -629,8 +634,6 @@ Connection.prototype.connect = function(url) {
 
 
 function getSock(url, C) {
-  var parse = require('url').parse;
-  var STATUS_CODES = require('http').STATUS_CODES;
   var MAX_REDIRECTS = 5;
   var redirections = 1;
 
@@ -646,7 +649,7 @@ function getSock(url, C) {
       return C(new Error('Redirect, bad protocol `' + url.protocol + '`'));
     }
 
-    request = require(url.protocol == 'http:' ? 'http' : 'https').request;
+    request = url.protocol == 'http:' ? requestHttp : requestHttps;
     host = url.hostname;
     port = url.port || (url.protocol == 'http:' ? 80 : 443);
     path = url.pathname;
@@ -696,7 +699,7 @@ function getSock(url, C) {
                 return C(new Error('Max HTTP redirections reached'));
               }
               try {
-                url = parse(res.headers['location']);
+                url = parseUrl(res.headers['location']);
               } catch (err) {
                 return C(err);
               }
