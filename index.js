@@ -45,7 +45,6 @@ var WRITE                 = 0x02;
 var READWRITE             = 0x03;
 var EMIT                  = 0x04;
 
-// Packet related sizes
 var PAYLOAD_MAX_SIZE      = 0xFFF8;
 
 var ALL_CHANNELS          = 0;
@@ -54,22 +53,17 @@ var VALID_ENCODINGS_RE    = /^(ascii|utf8|base64|json)/i;
 var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 
 
-exports.PAYLOAD_MAX_SIZE = PAYLOAD_MAX_SIZE;
+exports.PAYLOAD_MAX_SIZE  = PAYLOAD_MAX_SIZE;
 
-// Follow 302 redirects. Adds a `X-Accept-Redirects: no` to
-// the initial request headers in the handshake process.
-exports.followRedirects = true;
+exports.createChannel     = createChannel;
+exports.Channel           = Channel;
 
-
-// Set the origin in handshakes. Set to `null` to disable
-exports.origin = require('os').hostname();
-
-
-// Set the agent header in handshakes. Set to `null` to disable
+exports.followRedirects   = true;
+exports.origin            = require('os').hostname();
 exports.agent             = 'node-wink-client/' + VERSION;
 
 
-exports.createChannel = function(url, mode, C) {
+function createChannel (url, mode, C) {
   var chan = new Channel();
   chan.connect(url, mode);
   if (typeof C == 'function') {

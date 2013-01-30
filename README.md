@@ -73,7 +73,7 @@ Returns the maximum payload size.
 
 ### hydna.followRedirects=true
 
-Indicates if HTTP-redirects should be followed or not.
+Indicates that HTTP-redirects should be followed. or not. Adds a `X-Accept-Redirects: yes` to the request in the handshake process.
 
 
 ### hydna.origin=<hostname>
