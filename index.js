@@ -199,7 +199,7 @@ Channel.prototype.connect = function(url, mode) {
   this.writable = ((this._mode & WRITE) == WRITE);
   this.emitable = ((this._mode & EMIT) == EMIT);
 
-  this._connection = Connection.getConnection(url, false);
+  this._connection = Connection.getConnection(url, {});
   this._request = this._connection.open(this, id, mode, token);
 };
 
@@ -513,7 +513,7 @@ Channel.prototype._open = function(newid, message) {
 
 
 // Represents a server connection.
-function Connection(id) {
+function Connection (id, opts) {
   this.id = id;
   this.chanRefCount = 0;
   this.reqRefCount = 0;
@@ -521,7 +521,20 @@ function Connection(id) {
   this.requests = {};
   this.sock = null;
 
-  Connection.all[id] = this;
+  this._multiplex = 'noMultiplex' in opts           ? opts.noMultiplex : true;
+
+  this._followRedirects = 'followRedirects' in opts ? opts.followRedirects
+                                                    : exports.followRedirects;
+
+  this._agent = 'agent' in opts                     ? opts.agent
+                                                    : exports.agent;
+
+  this._origin = 'origin' in opts                   ? opts.origin
+                                                    : exports.origin;
+
+  if (this._multiplex) {
+    Connection.all[id] = this;
+  }
 }
 
 
@@ -529,17 +542,15 @@ Connection.all = {};
 Connection.disposed = {};
 
 
-Connection.getConnection = function(url) {
+Connection.getConnection = function (url, opts) {
   var id;
   var connection;
 
   id = url.protocol + url.host + (url.auth && (':' + url.auth) || '');
 
-  if ((connection = Connection.all[id])) {
+  if (!opts.noMultiplex && (connection = Connection.all[id])) {
     return connection;
-  }
-
-  if ((connection = Connection.disposed[id])) {
+  } else if (!opts.noMultiplex && (connection = Connection.disposed[id])) {
     connection.setDisposed(false);
     return connection;
   }
@@ -554,7 +565,7 @@ Connection.getConnection = function(url) {
     url.auth
   ].join(''));
 
-  connection = new Connection(id);
+  connection = new Connection(id, opts);
   connection.connect(url);
 
   return connection;
@@ -569,7 +580,15 @@ Connection.prototype.connect = function(url) {
   }
 
   process.nextTick(function() {
-    getSock(url, function(err, sock) {
+    var opts;
+
+    opts = {
+      followRedirects   : self._followRedirects,
+      agent             : self._agent,
+      origin            : self._agent
+    };
+
+    getSock(url, opts, function(err, sock) {
       var requests = self.requests;
 
       if (err) {
@@ -629,7 +648,7 @@ Connection.prototype.connect = function(url) {
 };
 
 
-function getSock(url, C) {
+function getSock(url, opts, C) {
   var MAX_REDIRECTS = 5;
   var redirections = 1;
 
@@ -660,15 +679,15 @@ function getSock(url, C) {
       }
     }
 
-    if (!exports.followRedirects) {
+    if (!opts.followRedirects) {
       opts.headers['X-Accept-Redirects'] = 'no';
     }
 
-    if (exports.agent) {
+    if (opts.agent) {
       opts.headers['User-Agent'] = exports.agent;
     }
 
-    if (exports.origin) {
+    if (opts.origin) {
       opts.headers['Origin'] = exports.origin;
     }
 
@@ -790,13 +809,17 @@ Connection.prototype.setDisposed = function(state) {
       });
     }
 
-    Connection.disposed[id] = this;
-    Connection.all[id] = undefined;
+    if (this._multiplex) {
+      Connection.disposed[id] = this;
+      Connection.all[id] = undefined;
+    }
 
   } else {
 
-    delete Connection.disposed[id];
-    Connection.all[id] = this;
+    if (this._multiplex) {
+      delete Connection.disposed[id];
+      Connection.all[id] = this;
+    }
 
     if (sock) {
       sock.setTimeout(0);
@@ -966,8 +989,10 @@ Connection.prototype.destroy = function(err, message) {
   this.chanRefCount = 0;
   this.reqRefCount = 0;
 
-  delete Connection.all[id];
-  delete Connection.disposed[id];
+  if (this._multiplex) {
+    delete Connection.all[id];
+    delete Connection.disposed[id];
+  }
 
   if (this.sock) {
     this.sock.destroy();
