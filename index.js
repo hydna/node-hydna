@@ -56,7 +56,9 @@ var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 exports.PAYLOAD_MAX_SIZE  = PAYLOAD_MAX_SIZE;
 
 exports.createChannel     = createChannel;
+
 exports.Channel           = Channel;
+exports.Connection        = Connection;
 
 exports.followRedirects   = true;
 exports.origin            = require('os').hostname();
@@ -90,6 +92,7 @@ function Channel() {
   this.writable = false;
   this.emitable = false;
 }
+
 
 inherits(Channel, Stream);
 
