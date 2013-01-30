@@ -28,6 +28,8 @@
 //  official policies, either expressed or implied, of Hydna AB.
 //
 
+'use strict';
+
 var requestHttp           = require('http').request;
 var requestHttps          = require('https').request;
 var inherits              = require('util').inherits;
@@ -216,6 +218,7 @@ Channel.prototype.write = function(data, enc, prio) {
   var id = this.id;
   var frame;
   var payload;
+  var flushed;
 
   if (!this.writable) {
     throw new Error('Channel is not writable');
@@ -1259,11 +1262,11 @@ function parserImplementation(conn) {
 
   conn.sock.ondata = function(chunk, start, end) {
     var tmpbuff;
-    var packet;
     var packetlen;
     var ch;
     var op;
     var flag;
+    var desc;
 
     if (buffer) {
       tmpbuff = new Buffer((length - offset) + (end - start));
