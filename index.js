@@ -50,8 +50,8 @@ var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 
 exports.PAYLOAD_MAX_SIZE = PAYLOAD_MAX_SIZE;
 
-// Follow 302 redirects. Adds a `X-Accept-Redirects: no` to the
-// headers of the handshake request.
+// Follow 302 redirects. Adds a `X-Accept-Redirects: no` to
+// the initial request headers in the handshake process.
 exports.followRedirects = true;
 
 
