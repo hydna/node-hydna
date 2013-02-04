@@ -135,7 +135,7 @@ Object.defineProperty(Channel.prototype, 'url', {
 });
 
 
-Channel.prototype.connect = function(url, mode) {
+Channel.prototype.connect = function(url, mode, opts) {
   var self = this;
   var messagesize;
   var request;
@@ -180,6 +180,11 @@ Channel.prototype.connect = function(url, mode) {
     throw new Error('Invalid channel expected no between x0 and xFFFFFFFF');
   }
 
+  if (typeof mode == "object") {
+    opts = mode;
+    mode = null;
+  }
+
   mode = getBinMode(mode);
 
   if (typeof mode !== 'number') {
@@ -190,6 +195,8 @@ Channel.prototype.connect = function(url, mode) {
     token = new Buffer(decodeURIComponent(uri.query), 'utf8');
   }
 
+  opts = opts || {};
+
   this.id = id;
   this._mode = mode;
   this._connecting = true;
@@ -199,7 +206,7 @@ Channel.prototype.connect = function(url, mode) {
   this.writable = ((this._mode & WRITE) == WRITE);
   this.emitable = ((this._mode & EMIT) == EMIT);
 
-  this._connection = Connection.getConnection(url, {});
+  this._connection = Connection.getConnection(url, opts);
   this._request = this._connection.open(this, id, mode, token);
 };
 
