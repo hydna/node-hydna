@@ -1,7 +1,7 @@
 var Buffer          = require('buffer').Buffer;
 var Channel         = require('../index').Channel;
 
-exports.TEST_HOST     = process.env['TEST_ADDRESS'] || 'pipsq.com:8080';
+exports.TEST_HOST     = process.env['TEST_ADDRESS'] || '127.0.0.1:7010';
 exports.TEST_CH       = exports.TEST_HOST + '/x112233';
 
 var timer = null;
