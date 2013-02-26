@@ -192,7 +192,7 @@ Channel.prototype.connect = function(url, mode, opts) {
   }
 
   if (url.query) {
-    token = new Buffer(decodeURIComponent(uri.query), 'utf8');
+    token = new Buffer(decodeURIComponent(url.query), 'utf8');
   }
 
   opts = opts || {};
