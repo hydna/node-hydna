@@ -221,7 +221,7 @@ Channel.prototype.setEncoding = function(encoding) {
 
 Channel.prototype.write = function(data, enc, prio) {
   var encoding = (typeof enc == 'string' && enc);
-  var flag = ((encoding && prio) || prio || 1) - 1;
+  var flag = ((encoding && prio) || prio || 0);
   var id = this.id;
   var frame;
   var payload;
@@ -232,7 +232,7 @@ Channel.prototype.write = function(data, enc, prio) {
   }
 
   if (flag < 0 || flag > 3 || isNaN(flag)) {
-    throw new Error('Bad priority, expected Number between 1-4');
+    throw new Error('Bad priority, expected Number between 0-3');
   }
 
   if (!data) {
@@ -431,7 +431,7 @@ Channel.prototype.ondata = function(data, start, end, flag) {
   }
 
   if (this._events && this._events['data']) {
-    this.emit('data', message, (flag >> 1) + 1);
+    this.emit('data', message, (flag >> 1));
   }
 };
 
