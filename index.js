@@ -683,7 +683,8 @@ function getSock(url, opts, C) {
       headers: {
         'Connection': 'Upgrade',
         'Upgrade':    'winksock/1',
-      }
+      },
+      agent: false
     }
 
     if (!opts.followRedirects) {
