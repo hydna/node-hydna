@@ -539,6 +539,9 @@ function Connection (id, opts) {
   this._origin = 'origin' in opts                   ? opts.origin
                                                     : exports.origin;
 
+  this.keepAliveTimer = null;
+  this.lastSentMessage = 0;
+
   if (this._multiplex) {
     Connection.all[id] = this;
   }
@@ -649,6 +652,7 @@ Connection.prototype.connect = function(url) {
       process.nextTick(function () {
         sock.resume();
         parserImplementation(self);
+        self.startKeepAliveTimer();
       });
     });
   });
@@ -817,6 +821,11 @@ Connection.prototype.setDisposed = function(state) {
       });
     }
 
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+
     if (this._multiplex) {
       Connection.disposed[id] = this;
       Connection.all[id] = undefined;
@@ -833,6 +842,8 @@ Connection.prototype.setDisposed = function(state) {
       sock.setTimeout(0);
       sock.removeAllListeners('timeout');
     }
+
+    this.startKeepAliveTimer();
   }
 };
 
@@ -840,10 +851,28 @@ Connection.prototype.setDisposed = function(state) {
 // Write a `Packet` to the underlying socket.
 Connection.prototype.write = function(frame) {
   if (this.sock) {
+    this.lastSentMessage = Date.now();
     return this.sock.write(frame.toBuffer());
   } else {
     return false;
   }
+};
+
+
+Connection.prototype.startKeepAliveTimer = function () {
+  var self = this;
+  this.keepAliveTimer = setInterval(function () {
+    var now = Date.now();
+    var frame;
+
+    if (now - self.lastSentMessage >= 15000) {
+      frame = new NoopFrame();
+      try {
+        self.write(frame);
+      } catch (err) {
+      }
+    }
+  }, 5000);
 };
 
 
@@ -1000,6 +1029,11 @@ Connection.prototype.destroy = function(err, message) {
   if (this._multiplex) {
     delete Connection.all[id];
     delete Connection.disposed[id];
+  }
+
+  if (this.keepAliveTimer) {
+    clearInterval(this.keepAliveTimer);
+    this.keepAliveTimer = null;
   }
 
   if (this.sock) {
@@ -1218,11 +1252,35 @@ OpenRequest.prototype.toBuffer = function() {
 };
 
 
+function NoopFrame () {
+}
+
+
+NoopFrame.prototype.toBuffer = function() {
+  var buffer;
+  var length;
+
+  length = 7;
+
+  buffer = new Buffer(length);
+  buffer[0] = length >>> 8;
+  buffer[1] = length % 256;
+  buffer[2] = 0;
+  buffer[3] = 0;
+  buffer[4] = 0;
+  buffer[5] = 0;
+  buffer[6] = 0;
+
+  return buffer;
+};
+
+
 function DataFrame(id, flag, data) {
   this.id = id;
   this.flag = flag;
   this.data = data;
 }
+
 
 DataFrame.prototype.toBuffer = function() {
   var id = this.id;
