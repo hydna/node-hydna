@@ -40,7 +40,6 @@ var VERSION               = require('./package.json').version;
 
 var STATUS_CODES          = require('http').STATUS_CODES;
 
-
 var READ                  = 0x01;
 var WRITE                 = 0x02;
 var READWRITE             = 0x03;
@@ -57,6 +56,8 @@ var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 exports.PAYLOAD_MAX_SIZE  = PAYLOAD_MAX_SIZE;
 
 exports.createChannel     = createChannel;
+exports.send              = send;
+exports.dispatch          = dispatch;
 
 exports.Channel           = Channel;
 exports.Connection        = Connection;
@@ -74,6 +75,115 @@ function createChannel (url, mode, C) {
   }
   return chan;
 };
+
+
+function send (url, data, prio, C) {
+  var headers;
+  var payload;
+  var url;
+
+  if (typeof prio == 'function') {
+    C = prio;
+    prio = 0;
+  }
+
+  url = parseHydnaUrl(url);
+
+  payload = typeof data == 'string' ? new Buffer(data, 'utf8') : data;
+
+  if (Buffer.isBuffer(payload) == false) {
+    throw new Error('Expected "data" as String or Buffer');
+  }
+
+  if (payload.length > PAYLOAD_MAX_SIZE) {
+    throw new Error('Payload overflow');
+  }
+
+  headers = {
+    'agent': exports.agent,
+    'X-Priority': String(prio),
+    'Content-Type': 'text/plain',
+    'Content-Length': payload.length
+  };
+
+  writeHttpRequest(url, payload, headers, C);
+}
+
+
+function dispatch (url, data, C) {
+  var headers;
+  var payload;
+  var url;
+
+  url = parseHydnaUrl(url);
+
+  payload = typeof data == 'string' ? new Buffer(data, 'utf8') : data;
+
+  if (Buffer.isBuffer(payload) == false) {
+    throw new Error('Expected "data" as String or Buffer');
+  }
+
+  if (payload.length > PAYLOAD_MAX_SIZE) {
+    throw new Error('Payload overflow');
+  }
+
+  headers = {
+    'agent': exports.agent,
+    'X-Emit': 'yes',
+    'Content-Type': 'text/plain',
+    'Content-Length': payload.length
+  };
+
+  writeHttpRequest(url, payload, headers, C);
+}
+
+
+function writeHttpRequest (url, payload, headers, C) {
+  var options;
+  var request;
+  var req;
+
+  request = url.protocol == 'http:' ? requestHttp : requestHttps;
+
+  options = {
+    hostname: url.hostname,
+    port: url.port || 80,
+    path: url.path,
+    method: 'POST',
+    headers: headers
+  };
+
+  req = request(options, function (res) {
+    var data;
+
+    if (typeof C !== 'function') {
+      return;
+    }
+
+    if (res.statusCode == 200) {
+      return C();
+    }
+
+    res.setEncoding('utf8');
+
+    res.on('data', function (chunk) {
+      data += chunk;
+    });
+
+    res.on('close', function () {
+      var err;
+      err = new Error(data || 'HTTP_' + res.statusCode);
+      return C(err);
+    });
+  });
+
+  req.on('error', function (err) {
+    return C && C(err);
+  });
+
+  req.write(payload);
+  req.end();
+}
 
 
 function Channel() {
@@ -1447,4 +1557,48 @@ function getBinMode(modeExpr) {
   match[3] && (result |= EMIT);
 
   return result;
+}
+
+
+function parseHydnaUrl(url) {
+  var channel;
+
+  if (typeof url !== 'string') {
+    throw new Error('bad argument, `url`, expected String');
+  }
+
+  if (/^http:\/\/|^https:\/\//.test(url) == false) {
+    url = 'http://' + url;
+  }
+
+  url = parseUrl(url);
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error('bad protocol, expected `http` or `https`');
+  }
+
+  if (url.pathname && url.pathname.length != 1) {
+    if (url.pathname.substr(0, 2) == '/x') {
+      channel = parseInt('0' + url.pathname.substr(1));
+    } else {
+      channel = parseInt(url.pathname.substr(1));
+    }
+    if (isNaN(channel)) {
+      throw new Error('Invalid channel');
+    }
+  } else {
+    channel = 1;
+  }
+
+  if (channel > 0xFFFFFFFF) {
+    throw new Error('Invalid channel expected no between x0 and xFFFFFFFF');
+  }
+
+  url.channel = channel;
+
+  if (url.query) {
+    url.token = new Buffer(decodeURIComponent(url.query), 'utf8');
+  }
+
+  return url;
 }

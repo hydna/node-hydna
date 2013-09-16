@@ -86,6 +86,20 @@ Sets the origin identity that should be sent to the server on handshake.
 Sets the agent identity that should be sent to the server on handshake.
 
 
+### hydna.send(url, data, [prio=0], [callback])
+
+Send's a message to specified `'url'` whithout creating a new `hydna.Channel` instance.
+
+Note: This function is a complement to the ordinary Hydna Channel and should be used when a persistent connection is redundant.
+
+
+### hydna.dispatch(url, data, [prio=0], [callback])
+
+Dispatch a signal on the specified `'url'` whithout creating a new `hydna.Channel` instance.
+
+Note: This function is a complement to the ordinary Hydna Channel and should be used when a persistent connection is redundant.
+
+
 ### hydna.createChannel(url, mode, [callback])
 
 Opens a Channel to the specified ´'url'´.
