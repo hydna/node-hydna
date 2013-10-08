@@ -51,6 +51,14 @@ var OP_DATA               = 0x2;
 var OP_SIGNAL             = 0x3;
 var OP_RESOLVE            = 0x4;
 
+var FLAG_BITMASK          = 0x7;
+
+var OP_BITPOS             = 3;
+var OP_BITMASK            = (0x7 << OP_BITPOS);
+
+var CTYPE_BITPOS          = 6;
+var CTYPE_BITMASK         = (0x1 << CTYPE_BITPOS);
+
 var PAYLOAD_MAX_SIZE      = 0xFFF8;
 
 var ALL_CHANNELS          = 0;
@@ -498,7 +506,6 @@ function finalizeDestroyChannel(chan, err, message) {
   chan.emitable = false;
   chan.destroyed = true;
   chan._id = null;
-  chan._path = null;
   chan._request = null;
   chan._writequeue = null;
   chan._connection = null;
@@ -506,6 +513,8 @@ function finalizeDestroyChannel(chan, err, message) {
   err && chan.emit('error', err);
 
   chan.emit('close', !(!err), message);
+
+  chan._path = null;
 };
 
 
