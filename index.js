@@ -946,7 +946,6 @@ Connection.prototype.setDisposed = function(state) {
 
 // Write a `Packet` to the underlying socket.
 Connection.prototype.write = function(frame) {
-  console.log("write");
   if (this.sock) {
     this.lastSentMessage = Date.now();
     return this.sock.write(frame.toBuffer());
@@ -1241,7 +1240,6 @@ OpenRequest.prototype.resolve = function() {
 
   process.nextTick(function() {
     try {
-      console.log("write resolve");
       self.conn.write(self);
     } catch (err) {
       self.conn.destroy(err);
@@ -1401,7 +1399,6 @@ OpenRequest.prototype.toBuffer = function() {
     flag = this.flag;
     data = this.data;
   } else {
-    console.log("OP");
     id = 0;
     op = 0x4;
     flag = 0;
