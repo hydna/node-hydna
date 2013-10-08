@@ -148,7 +148,7 @@ function writeHttpRequest (url, payload, headers, C) {
   options = {
     hostname: url.hostname,
     port: url.port || 80,
-    path: url.path,
+    path: url.pathname,
     method: 'POST',
     headers: headers
   };
@@ -187,8 +187,7 @@ function writeHttpRequest (url, payload, headers, C) {
 
 
 function Channel() {
-  this.id = null;
-
+  this._id = null;
   this._connecting = false;
   this._opening = false;
   this._closing = false;
@@ -198,6 +197,7 @@ function Channel() {
   this._writeQueue = null;
   this._encoding = null;
   this._url = null;
+  this._path = null;
 
   this.readable = false;
   this.writable = false;
@@ -216,7 +216,7 @@ Object.defineProperty(Channel.prototype, 'readyState', {
       return 'opening';
     } else if (this._closing) {
       return 'closing';
-    } else if (!this.id) {
+    } else if (!this._path) {
       return 'closed';
     } else if (this.readable && this.writable) {
       state = 'readwrite';
@@ -236,7 +236,7 @@ Object.defineProperty(Channel.prototype, 'readyState', {
 
 Object.defineProperty(Channel.prototype, 'url', {
   get: function () {
-    if (!this.id || !this._connection) {
+    if (!this._path || !this._connection) {
       return null;
     }
 
@@ -245,12 +245,22 @@ Object.defineProperty(Channel.prototype, 'url', {
 });
 
 
+Object.defineProperty(Channel.prototype, 'path', {
+  get: function () {
+    if (!this._path || !this._connection) {
+      return null;
+    }
+
+    return this._path;
+  }
+});
+
+
 Channel.prototype.connect = function(url, mode, opts) {
   var self = this;
   var messagesize;
   var request;
-  var uri;
-  var id;
+  var path;
   var host;
   var mode;
   var token;
@@ -259,36 +269,7 @@ Channel.prototype.connect = function(url, mode, opts) {
     throw new Error('Already connecting');
   }
 
-  if (typeof url !== 'string') {
-    throw new Error('bad argument, `url`, expected String');
-  }
-
-  if (/^http:\/\/|^https:\/\//.test(url) == false) {
-    url = 'http://' + url;
-  }
-
-  url = parseUrl(url);
-
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error('bad protocol, expected `http` or `https`');
-  }
-
-  if (url.pathname && url.pathname.length != 1) {
-    if (url.pathname.substr(0, 2) == '/x') {
-      id = parseInt('0' + url.pathname.substr(1));
-    } else {
-      id = parseInt(url.pathname.substr(1));
-    }
-    if (isNaN(id)) {
-      throw new Error('Invalid channel');
-    }
-  } else {
-    id = 1;
-  }
-
-  if (id > 0xFFFFFFFF) {
-    throw new Error('Invalid channel expected no between x0 and xFFFFFFFF');
-  }
+  url = parseHydnaUrl(url);
 
   if (typeof mode == "object") {
     opts = mode;
@@ -301,23 +282,23 @@ Channel.prototype.connect = function(url, mode, opts) {
     throw new Error('Invalid mode');
   }
 
-  if (url.query) {
-    token = new Buffer(decodeURIComponent(url.query), 'utf8');
-  }
+  token = url.token;
+  path = url.pathname;
 
   opts = opts || {};
 
-  this.id = id;
   this._mode = mode;
   this._connecting = true;
   this._url = url.href;
+  this._path = path;
+  this._id = null;
 
   this.readable = ((this._mode & READ) == READ);
   this.writable = ((this._mode & WRITE) == WRITE);
   this.emitable = ((this._mode & EMIT) == EMIT);
 
   this._connection = Connection.getConnection(url, opts);
-  this._request = this._connection.open(this, id, mode, token);
+  this._request = this._connection.open(this, path, mode, token);
 };
 
 
@@ -332,7 +313,7 @@ Channel.prototype.setEncoding = function(encoding) {
 Channel.prototype.write = function(data, enc, prio) {
   var encoding = (typeof enc == 'string' && enc);
   var flag = ((encoding && prio) || prio || 0);
-  var id = this.id;
+  var id = this._id;
   var frame;
   var payload;
   var flushed;
@@ -368,7 +349,7 @@ Channel.prototype.write = function(data, enc, prio) {
     throw new Error('Payload overflow');
   }
 
-  frame = new DataFrame(this.id, flag, payload);
+  frame = new DataFrame(this._id, flag, payload);
 
   try {
     flushed = this._writeOut(frame);
@@ -402,7 +383,7 @@ Channel.prototype.dispatch = function(message) {
     }
   }
 
-  frame = new SignalFrame(this.id, SignalFrame.FLAG_EMIT, payload);
+  frame = new SignalFrame(this._id, SignalFrame.FLAG_EMIT, payload);
 
   try {
     flushed = this._writeOut(frame);
@@ -434,7 +415,7 @@ Channel.prototype.end = function(message) {
     }
   }
 
-  this._endsig = new SignalFrame(this.id, SignalFrame.FLAG_END, payload);
+  this._endsig = new SignalFrame(this._id, SignalFrame.FLAG_END, payload);
 
   this.destroy();
 };
@@ -443,7 +424,7 @@ Channel.prototype.end = function(message) {
 Channel.prototype.destroy = function(err) {
   var sig;
 
-  if (this.destroyed || this._closing || !this.id) {
+  if (this.destroyed || this._closing || !this._path) {
     return;
   }
 
@@ -463,7 +444,7 @@ Channel.prototype.destroy = function(err) {
     return;
   }
 
-  sig = this._endsig || new SignalFrame(this.id, SignalFrame.FLAG_END);
+  sig = this._endsig || new SignalFrame(this._id, SignalFrame.FLAG_END);
 
   if (this._request) {
     // Do not send ENDSIG if _request is present. We need to wait for
@@ -485,29 +466,34 @@ Channel.prototype.destroy = function(err) {
 
 
 function finalizeDestroyChannel(chan, err, message) {
-  var id = chan.id;
+  var id = chan._id;
+  var path = chan._path;
   var conn;
 
   if (chan.destroyed) {
     return;
   }
 
-  if ((conn = chan._connection) && chan.id) {
-    if (conn.channels[id] == chan) {
-      delete conn.channels[id];
+  if ((conn = chan._connection)) {
+    if (conn.channelsByPath[path] == chan) {
+      delete conn.channelsByPath[path];
       conn.chanRefCount--;
       if (conn.chanRefCount == 0 &&
           conn.reqRefCount == 0) {
         conn.setDisposed(true);
       }
     }
+    if (conn.channels[id] == chan) {
+      delete conn.channels[id];
+    }
   }
 
-  chan.id = null;
   chan.readable = false;
   chan.writable = false;
   chan.emitable = false;
   chan.destroyed = true;
+  chan._id = null;
+  chan._path = null;
   chan._request = null;
   chan._writequeue = null;
   chan._connection = null;
@@ -580,24 +566,23 @@ Channel.prototype._writeOut = function(packet) {
 };
 
 
-Channel.prototype._open = function(newid, message) {
+Channel.prototype._open = function(id, message) {
   var flushed = false;
   var queue = this._writeQueue;
-  var id = this.id;
   var packet;
 
-  this.id = newid;
+  this._id = id;
   this._connecting = false;
   this._writeQueue = null;
   this._request = null;
 
-  this._connection.channels[this.id] = this;
+  this._connection.channels[id] = this;
   this._connection.chanRefCount++;
 
   if (queue && queue.length) {
     for (var i = 0, l = queue.length; i < l; i++) {
       packet = queue[i];
-      packet.id = newid;
+      packet.id = id;
       try {
         flushed = this._writeOut(packet);
       } catch(writeException) {
@@ -634,6 +619,7 @@ function Connection (id, opts) {
   this.id = id;
   this.chanRefCount = 0;
   this.reqRefCount = 0;
+  this.channelsByPath = {};
   this.channels = {};
   this.requests = {};
   this.sock = null;
@@ -753,7 +739,6 @@ Connection.prototype.connect = function(url) {
       try {
         for (var id in requests) {
           self.write(requests[id]);
-          requests[id].sent = true;
         }
       } catch (writeException) {
         self.destroy(writeException);
@@ -882,20 +867,21 @@ function getSock(url, opts, C) {
 }
 
 
-Connection.prototype.open = function(chan, id, mode, token) {
+Connection.prototype.open = function(chan, path, mode, token) {
   var self = this;
-  var channels = this.channels;
+  var channels = self.channels;
+  var channelsByPath = self.channelsByPath;
   var oldchan;
   var request;
 
-  if ((oldchan = channels[id]) && !oldchan._closing) {
+  if ((oldchan = channelsByPath[path]) && !oldchan._closing) {
     process.nextTick(function() {
       finalizeDestroyChannel(chan, new Error('Channel is already open'));
     });
     return null;
   }
 
-  request = new OpenRequest(this, id, mode, token);
+  request = new OpenRequest(self, path, mode, token);
 
   request.onresponse = function(newid, message) {
     chan._open(newid, message);
@@ -905,10 +891,10 @@ Connection.prototype.open = function(chan, id, mode, token) {
     if (err) { finalizeDestroyChannel(chan, err); }
   };
 
-  if (this.sock && !oldchan) {
+  if (self.sock && !oldchan) {
     // Do not send request if socket isnt handshaked yet, or
     // if a channel is open and waiting for an ENDSIG.
-    request.send();
+    request.resolve();
   }
 
   return request;
@@ -960,6 +946,7 @@ Connection.prototype.setDisposed = function(state) {
 
 // Write a `Packet` to the underlying socket.
 Connection.prototype.write = function(frame) {
+  console.log("write");
   if (this.sock) {
     this.lastSentMessage = Date.now();
     return this.sock.write(frame.toBuffer());
@@ -987,10 +974,23 @@ Connection.prototype.startKeepAliveTimer = function () {
 
 
 Connection.prototype.processOpen = function(id, flag, data, start, end) {
+  var requests = this.requests;
+  var keys;
   var request;
+  var key;
 
-  if (!(request = this.requests[id])) {
-    sock.destroy(new Error('Server sent an open response to unknown'));
+  keys = Object.keys(requests);
+
+  for (var i = 0; i < keys.length; i++) {
+    key = keys[i];
+    if (requests[key].id == id) {
+      request = requests[key];
+      break;
+    }
+  }
+
+  if (!request) {
+    this.destroy(new Error('Server sent an open response to unknown'));
     return;
   }
 
@@ -1072,9 +1072,9 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
 
         finalizeDestroyChannel(chan);
 
-        if (requests[id]) {
+        if (requests[chan.path]) {
           // Send pending open request if exists.
-          requests[id].send();
+          requests[chan.path].resolve();
         }
 
       } else {
@@ -1104,10 +1104,28 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
 };
 
 
+Connection.prototype.processResolve = function (id, flag, data, start, end) {
+  var requests = this.requests;
+  var request;
+  var path;
+
+  if (end - start <= 0) {
+    this.destroy(new Error('Server sent a bad resolve response'));
+    return;
+  }
+
+  path = data.toString('ascii', start, end);
+
+  if ((request = requests[path])) {
+    request.processResolve(id, flag, path);
+  }
+};
+
+
 // Destroy connection with optional Error
 Connection.prototype.destroy = function(err, message) {
   var id = this.id;
-  var channels = this.channels;
+  var channels = this.channelsByPath;
   var requests = this.requests;
   var chan;
   var request;
@@ -1119,8 +1137,8 @@ Connection.prototype.destroy = function(err, message) {
 
   this.id = null;
 
-  for (var chanid in channels) {
-    if ((chan = channels[chanid])) {
+  for (var path in channels) {
+    if ((chan = channels[path])) {
       finalizeDestroyChannel(chan, err, message);
     }
   }
@@ -1132,6 +1150,7 @@ Connection.prototype.destroy = function(err, message) {
   }
 
   this.channels = {};
+  this.channelsByPath = {};
   this.requests = {};
   this.chanRefCount = 0;
   this.reqRefCount = 0;
@@ -1153,12 +1172,14 @@ Connection.prototype.destroy = function(err, message) {
 };
 
 // OpenRequest constructor.
-function OpenRequest(conn, id, flag, data) {
+function OpenRequest(conn, path, flag, data) {
   var requests = conn.requests;
   var next;
 
+  this.id = null;
+
   this.conn = conn;
-  this.id = id;
+  this.path = path;
   this.flag = flag;
   this.data = data;
   this.present = false;
@@ -1168,11 +1189,11 @@ function OpenRequest(conn, id, flag, data) {
   this.prev = null;
   this.next = null;
 
-  if ((next = requests[id])) {
+  if ((next = requests[path])) {
     while (next.next && (next = next.next)) {};
     next.next = this;
   } else {
-    requests[id] = this;
+    requests[path] = this;
   }
 
   conn.reqRefCount++;
@@ -1211,8 +1232,27 @@ OpenRequest.prototype.send = function() {
 };
 
 
+OpenRequest.prototype.resolve = function() {
+  var self = this;
+
+  if (this.id) {
+    throw new Error('OpenRequest already have an ID');
+  }
+
+  process.nextTick(function() {
+    try {
+      console.log("write resolve");
+      self.conn.write(self);
+    } catch (err) {
+      self.conn.destroy(err);
+    }
+  });
+
+};
+
+
 OpenRequest.prototype.cancel = function() {
-  var id = this.id;
+  var path = this.path;
   var conn = this.conn;
   var requests = conn.requests;
   var next;
@@ -1224,11 +1264,11 @@ OpenRequest.prototype.cancel = function() {
     return false;
   }
 
-  if (requests[id] == this) {
+  if (requests[path] == this) {
     if (this.next) {
-      requests[id] = this.next;
+      requests[path] = this.next;
     } else {
-      delete requests[id];
+      delete requests[path];
     }
   } else if (this.prev) {
     this.prev = this.next;
@@ -1263,7 +1303,18 @@ OpenRequest.prototype.destroyAndNext = function(err) {
     this.next.destroyAndNext(err);
   }
   this.destroy(err);
-}
+};
+
+
+OpenRequest.prototype.processResolve = function(id, flag, path) {
+  if (flag != OpenRequest.FLAG_ALLOW) {
+    this.destroy(new Error("ERR_UNABLE_TO_RESOLVE_PATH"));
+    return;
+  }
+  
+  this.id = id;
+  this.send();
+};
 
 
 OpenRequest.prototype.processResponse = function(flag, data, start, end) {
@@ -1278,11 +1329,11 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
       this.next.destroyAndNext(new Error('Channel is already open'));
     } else {
       this.next.prev = null;
-      conn.requests[this.id] = this.next;
-      conn.requests[this.id].send();
+      conn.requests[this.path] = this.next;
+      conn.requests[this.path].resolve();
     }
   } else {
-    delete conn.requests[this.id];
+    delete conn.requests[this.path];
   }
 
   len = end - start;
@@ -1337,11 +1388,25 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
 
 
 OpenRequest.prototype.toBuffer = function() {
-  var id = this.id;
-  var data = this.data;
-  var flag = this.flag;
+  var id;
+  var data;
+  var flag;
   var buffer;
   var length;
+  var op;
+
+
+  if ((id = this.id)) {
+    op = 0x1;
+    flag = this.flag;
+    data = this.data;
+  } else {
+    console.log("OP");
+    id = 0;
+    op = 0x4;
+    flag = 0;
+    data = new Buffer(this.path, 'ascii');
+  }
 
   length = 7 + (data ? data.length : 0);
 
@@ -1352,7 +1417,7 @@ OpenRequest.prototype.toBuffer = function() {
   buffer[3] = id >>> 16;
   buffer[4] = id >>> 8;
   buffer[5] = id % 256;
-  buffer[6] = 0x1 << 3 | flag;
+  buffer[6] = op << 3 | flag;
 
   if (length > 7) {
     data.copy(buffer, 7);
@@ -1507,7 +1572,7 @@ function parserImplementation(conn) {
             buffer[offset + 5]) + (buffer[offset + 2] << 24 >>> 0);
 
       desc = buffer[offset + 6];
-      op = ((desc >> 1) & 0xf) >> 2;
+      op = ((desc >> 3) & 0xf);
       flag = (desc << 1 & 0xf) >> 1;
 
       switch (op) {
@@ -1525,6 +1590,10 @@ function parserImplementation(conn) {
 
         case 0x3: // SIGNAL
           conn.processSignal(ch, flag, buffer, offset + 7, offset + packetlen);
+          break;
+
+        case 0x4: // LOOKUP
+          conn.processResolve(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
       }
 
@@ -1576,25 +1645,6 @@ function parseHydnaUrl(url) {
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
     throw new Error('bad protocol, expected `http` or `https`');
   }
-
-  if (url.pathname && url.pathname.length != 1) {
-    if (url.pathname.substr(0, 2) == '/x') {
-      channel = parseInt('0' + url.pathname.substr(1));
-    } else {
-      channel = parseInt(url.pathname.substr(1));
-    }
-    if (isNaN(channel)) {
-      throw new Error('Invalid channel');
-    }
-  } else {
-    channel = 1;
-  }
-
-  if (channel > 0xFFFFFFFF) {
-    throw new Error('Invalid channel expected no between x0 and xFFFFFFFF');
-  }
-
-  url.channel = channel;
 
   if (url.query) {
     url.token = new Buffer(decodeURIComponent(url.query), 'utf8');
