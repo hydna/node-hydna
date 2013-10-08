@@ -123,7 +123,7 @@ This object is an abstraction of a TCP or UNIX socket. hydna.Channel instance im
 hydna.Channel instances are EventEmitters with the following events:
 
 Event: `'connect'`
-`function (message) { }`
+`function (data) { }`
 
 Emitted when a channel connection successfully is established. See connect(). The `'message'` argument may or may not contain an initial message from server.
 
@@ -171,14 +171,9 @@ Either `'closed'`, `'closing'`, `'open'`, `'opening'`,
 `'read'`, `'write'`, `'readwrite'` and/or `'+emit'`.
 
 
-#### Channel.id
+#### Channel.path
 
-Returns channel `id` as a string. Property is `null` if not connected.
-
-
-#### Channel.setEncoding(encoding=null)
-
-Sets the encoding (either `'ascii'`, `'utf8'`, `'base64'`, `'json'`)
+Returns channel `path` as a string. Property is `null` if not connected.
 
 
 #### Channel.connect(url, mode='readwrite')
@@ -186,14 +181,14 @@ Sets the encoding (either `'ascii'`, `'utf8'`, `'base64'`, `'json'`)
 See `hydna.createChannel` for more info.
 
 
-#### Channel.write(data, encoding='ascii', priority=1)
+#### Channel.write(data,  priority=0)
 
-Sends data on the channel. The second parameter specifies the encoding in the case of a string--it defaults to ASCII because encoding to UTF8 is rather slow.
+Sends data on the channel.
 
 Returns ´true´ if the entire data was flushed successfully to the underlying connection. Returns `false` if all or part of the data was queued in user memory. ´'drain'´ will be emitted when the buffer is again free.
 
 
-#### Channel.dispatch(message)
+#### Channel.dispatch(data)
 
 Dispatch a signal on the channel.
 
@@ -212,9 +207,9 @@ Example:
 
 
 
-#### Channel.end([message])
+#### Channel.end([data])
 
-Closes channel for reading, writing and emitting. The optional `message` is sent to the server.
+Closes channel for reading, writing and emitting. The optional `data` is sent to the server.
 
 Example:
 
