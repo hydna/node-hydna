@@ -1147,7 +1147,6 @@ function OpenRequest(conn, path, flag, data) {
 
 // Open Flags
 OpenRequest.FLAG_ALLOW = 0x0;
-OpenRequest.FLAG_REDIRECT = 0x1;
 OpenRequest.FLAG_DENY = 0x7;
 
 
@@ -1294,30 +1293,6 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
         }
       }
       this.onresponse(this.id, message);
-      this.destroy();
-      break;
-
-    case OpenRequest.FLAG_REDIRECT:
-
-      if (len < 4) {
-        conn.destroy(new Error('Bad open resp'));
-        return;
-      }
-
-      newid = (data[start + 1] << 16 |
-               data[start + 2] << 8 |
-               data[start + 3]) + (data[start] << 24 >>> 0);
-
-      if (len > 4) {
-        try {
-          message = data.toString('utf8', start + 4, end);
-        } catch (err) {
-          this.destroy(err);
-          return;
-        }
-      }
-
-      this.onresponse(newid, message);
       this.destroy();
       break;
 
