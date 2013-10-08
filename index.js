@@ -68,7 +68,6 @@ exports.dispatch          = dispatch;
 exports.Channel           = Channel;
 exports.Connection        = Connection;
 
-exports.followRedirects   = true;
 exports.origin            = require('os').hostname();
 exports.agent             = 'node-wink-client/' + VERSION;
 
@@ -632,9 +631,6 @@ function Connection (id, opts) {
 
   this._multiplex = 'noMultiplex' in opts           ? opts.noMultiplex : true;
 
-  this._followRedirects = 'followRedirects' in opts ? opts.followRedirects
-                                                    : exports.followRedirects;
-
   this._agent = 'agent' in opts                     ? opts.agent
                                                     : exports.agent;
 
@@ -695,7 +691,6 @@ Connection.prototype.connect = function(url) {
     var opts;
 
     opts = {
-      followRedirects   : self._followRedirects,
       agent             : self._agent,
       origin            : self._agent
     };
@@ -761,115 +756,60 @@ Connection.prototype.connect = function(url) {
 
 
 function getSock(url, opts, C) {
-  var MAX_REDIRECTS = 5;
-  var redirections = 1;
+  var request;
+  var opts;
+  var req;
+  var port;
+  var host;
+  var path;
 
-  function dorequest(url) {
-    var request;
-    var opts;
-    var req;
-    var port;
-    var host;
-    var path;
+  request = url.protocol == 'http:' ? requestHttp : requestHttps;
+  host = url.hostname;
+  port = url.port || (url.protocol == 'http:' ? 80 : 443);
+  path = url.pathname;
 
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return C(new Error('Redirect, bad protocol `' + url.protocol + '`'));
-    }
-
-    request = url.protocol == 'http:' ? requestHttp : requestHttps;
-    host = url.hostname;
-    port = url.port || (url.protocol == 'http:' ? 80 : 443);
-    path = url.pathname;
-
-    opts = {
-      port: port,
-      host: host,
-      path: path,
-      headers: {
-        'Connection': 'Upgrade',
-        'Upgrade':    'winksock/1',
-      },
-      agent: false
-    }
-
-    if (!opts.followRedirects) {
-      opts.headers['X-Accept-Redirects'] = 'no';
-    }
-
-    if (opts.agent) {
-      opts.headers['User-Agent'] = exports.agent;
-    }
-
-    if (opts.origin) {
-      opts.headers['Origin'] = exports.origin;
-    }
-
-    req = request(opts, function(res) {
-      var msg;
-
-      res.setEncoding('utf8');
-
-      res.on('data', function(chunk) {
-        msg = msg ? msg + chunk : chunk;
-      });
-
-      res.on('end', function() {
-        var code = res.statusCode;
-        var url;
-        var err;
-
-        switch (code) {
-          case 301:
-          case 302:
-          case 307:
-            if (exports.followRedirects) {
-              if (redirections++ == MAX_REDIRECTS) {
-                return C(new Error('Max HTTP redirections reached'));
-              }
-              try {
-                url = parseUrl(res.headers['location']);
-              } catch (err) {
-                return C(err);
-              }
-              return dorequest(url)
-            } else {
-              err = new Error('Redirected by host, followRedirects=false');
-              return C(err);
-            }
-            break;
-          default:
-            if (msg) {
-              err = new Error(STATUS_CODES[code] + ' (' + msg + ')');
-            } else {
-              err = new Error(STATUS_CODES[code]);
-            }
-            break;
-        }
-
-        return C(err);
-      });
-    });
-
-    req.on('error', function(err) {
-      return C(err);
-    });
-
-    req.on('upgrade', function(res, sock) {
-      sock.setTimeout(0);
-      sock.removeAllListeners('error');
-      sock.removeAllListeners('close');
-
-      if (res.headers['upgrade'] != 'winksock/1') {
-        sock.destroy(new Error('Bad protocol version ' + res.headers['upgrade']));
-      }
-
-      return C(null, sock);
-    });
-
-    req.end();
+  opts = {
+    port: port,
+    host: host,
+    path: path,
+    headers: {
+      'Connection': 'Upgrade',
+      'Upgrade':    'winksock/1',
+    },
+    agent: false
   }
 
-  dorequest(url);
+  if (opts.agent) {
+    opts.headers['User-Agent'] = exports.agent;
+  }
+
+  if (opts.origin) {
+    opts.headers['Origin'] = exports.origin;
+  }
+
+  req = request(opts, function(res) {
+    res.on('end', function() {
+      return (new Error('Expected upgrade'));
+    });
+  });
+
+  req.on('error', function(err) {
+    return C(err);
+  });
+
+  req.on('upgrade', function(res, sock) {
+    sock.setTimeout(0);
+    sock.removeAllListeners('error');
+    sock.removeAllListeners('close');
+
+    if (res.headers['upgrade'] != 'winksock/1') {
+      sock.destroy(new Error('Bad protocol version ' + res.headers['upgrade']));
+    }
+
+    return C(null, sock);
+  });
+
+  req.end();
 }
 
 
