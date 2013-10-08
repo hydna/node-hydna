@@ -71,10 +71,6 @@ contains everything that is necessary to communicate over hydna.
 
 Returns the maximum payload size.
 
-### hydna.followRedirects=true
-
-Indicates that HTTP-redirects should be followed. or not. Adds a `X-Accept-Redirects: yes` to the request in the handshake process.
-
 
 ### hydna.origin=<hostname>
   
