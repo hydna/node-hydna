@@ -45,6 +45,12 @@ var WRITE                 = 0x02;
 var READWRITE             = 0x03;
 var EMIT                  = 0x04;
 
+var OP_HEARTBEAT          = 0x0;
+var OP_OPEN               = 0x1;
+var OP_DATA               = 0x2;
+var OP_SIGNAL             = 0x3;
+var OP_RESOLVE            = 0x4;
+
 var PAYLOAD_MAX_SIZE      = 0xFFF8;
 
 var ALL_CHANNELS          = 0;
@@ -1395,11 +1401,11 @@ OpenRequest.prototype.toBuffer = function() {
 
 
   if ((id = this.id)) {
-    op = 0x1;
+    op = OP_OPEN;
     flag = this.flag;
     data = this.data;
   } else {
-    id = 0;
+    id = OP_RESOLVE;
     op = 0x4;
     flag = 0;
     data = new Buffer(this.path, 'ascii');
@@ -1470,7 +1476,7 @@ DataFrame.prototype.toBuffer = function() {
   buffer[3] = id >>> 16;
   buffer[4] = id >>> 8;
   buffer[5] = id % 256;
-  buffer[6] = 0x2 << 3 | flag;
+  buffer[6] = OP_DATA << 3 | flag;
 
   if (length > 7) {
     data.copy(buffer, 7);
@@ -1508,7 +1514,7 @@ SignalFrame.prototype.toBuffer = function() {
   buffer[3] = id >>> 16;
   buffer[4] = id >>> 8;
   buffer[5] = id % 256;
-  buffer[6] = 0x3 << 3 | flag;
+  buffer[6] = OP_SIGNAL << 3 | flag;
 
   if (length > 7) {
     data.copy(buffer, 7);
@@ -1574,22 +1580,22 @@ function parserImplementation(conn) {
 
       switch (op) {
 
-        case 0x0: // NOOP
+        case OP_HEARTBEAT:
           break;
 
-        case 0x1: // OPEN
+        case OP_OPEN:
           conn.processOpen(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
-        case 0x2: // DATA
+        case OP_DATA:
           conn.processData(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
-        case 0x3: // SIGNAL
+        case OP_SIGNAL:
           conn.processSignal(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
 
-        case 0x4: // LOOKUP
+        case OP_RESOLVE:
           conn.processResolve(ch, flag, buffer, offset + 7, offset + packetlen);
           break;
       }
