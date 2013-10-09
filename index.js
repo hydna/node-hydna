@@ -59,11 +59,13 @@ var OP_BITMASK            = (0x7 << OP_BITPOS);
 var CTYPE_BITPOS          = 6;
 var CTYPE_BITMASK         = (0x1 << CTYPE_BITPOS);
 
+var PAYLOAD_TYPE_TEXT     = 0;
+var PAYLOAD_TYPE_BINARY   = 1;
+
 var PAYLOAD_MAX_SIZE      = 0xFFF8;
 
 var ALL_CHANNELS          = 0;
 
-var VALID_ENCODINGS_RE    = /^(ascii|utf8|base64|json)/i;
 var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
 
 
@@ -208,7 +210,6 @@ function Channel() {
   this._request = null;
   this._mode = null;
   this._writeQueue = null;
-  this._encoding = null;
   this._url = null;
   this._path = null;
 
@@ -315,17 +316,8 @@ Channel.prototype.connect = function(url, mode, opts) {
 };
 
 
-Channel.prototype.setEncoding = function(encoding) {
-  if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
-    throw new Error('Encoding method not supported');
-  }
-  this._encoding = encoding;
-};
-
-
-Channel.prototype.write = function(data, enc, prio) {
-  var encoding = (typeof enc == 'string' && enc);
-  var flag = ((encoding && prio) || prio || 0);
+Channel.prototype.write = function(data, prio) {
+  var flag = prio || 0;
   var id = this._id;
   var frame;
   var payload;
@@ -335,34 +327,23 @@ Channel.prototype.write = function(data, enc, prio) {
     throw new Error('Channel is not writable');
   }
 
-  if (flag < 0 || flag > 3 || isNaN(flag)) {
-    throw new Error('Bad priority, expected Number between 0-3');
-  }
-
-  if (!data) {
-    throw new Error('Expected `data`');
+  if (flag < 0 || flag > 7 || isNaN(flag)) {
+    throw new Error('Bad priority, expected Number between 0-7');
   }
 
   if (Buffer.isBuffer(data)) {
-    flag = flag << 1 | 0; // Set datatype to BINARY
-    payload = data;
+    if (data.length > PAYLOAD_MAX_SIZE) {
+      throw new Error('Payload overflow');
+    }
+  } else if (typeof data == 'string') {
+    if (Buffer.byteLength(data, 'utf8') > PAYLOAD_MAX_SIZE) {
+      throw new Error('Payload overflow');
+    }
   } else {
-    flag = flag << 1 | 1; // Set datatype to UTF8
-    if (encoding && !VALID_ENCODINGS_RE.test(encoding)) {
-      throw new Error('Encoding method is not supported');
-    }
-    if (encoding == 'json') {
-      payload = new Buffer(JSON.stringify(data), 'utf8');
-    } else {
-      payload = new Buffer(data.toString(), encoding);
-    }
+    throw new Error('Bad type for data');
   }
 
-  if (payload.length > PAYLOAD_MAX_SIZE) {
-    throw new Error('Payload overflow');
-  }
-
-  frame = new DataFrame(this._id, flag, payload);
+  frame = new DataFrame(this._id, flag, data);
 
   try {
     flushed = this._writeOut(frame);
@@ -375,7 +356,7 @@ Channel.prototype.write = function(data, enc, prio) {
 };
 
 
-Channel.prototype.dispatch = function(message) {
+Channel.prototype.dispatch = function(data) {
   var frame;
   var payload;
   var flushed;
@@ -384,19 +365,19 @@ Channel.prototype.dispatch = function(message) {
     throw new Error('Channel is not emitable.');
   }
 
-  if (typeof message !== 'undefined' && typeof message !== 'string') {
-    throw new Error('Expected "message" as String');
-  }
-
-  if (message) {
-    payload = new Buffer(message, 'utf8');
-
-    if (payload.length > PAYLOAD_MAX_SIZE) {
+  if (Buffer.isBuffer(data)) {
+    if (data.length > PAYLOAD_MAX_SIZE) {
       throw new Error('Payload overflow');
     }
+  } else if (typeof data == 'string') {
+    if (Buffer.byteLength(data, 'utf8') > PAYLOAD_MAX_SIZE) {
+      throw new Error('Payload overflow');
+    }
+  } else {
+    throw new Error('Bad type for data');
   }
 
-  frame = new SignalFrame(this._id, SignalFrame.FLAG_EMIT, payload);
+  frame = new SignalFrame(this._id, SignalFrame.FLAG_EMIT, data);
 
   try {
     flushed = this._writeOut(frame);
@@ -409,26 +390,26 @@ Channel.prototype.dispatch = function(message) {
 };
 
 
-Channel.prototype.end = function(message) {
+Channel.prototype.end = function(data) {
   var payload;
 
   if (this.destroyed || this._closing) {
     return;
   }
 
-  if (typeof message !== 'undefined' && typeof message !== 'string') {
-    throw new Error('Expected "message" as String');
-  }
-
-  if (message) {
-    payload = new Buffer(message, 'utf8');
-
-    if (payload.length > PAYLOAD_MAX_SIZE) {
+  if (Buffer.isBuffer(data)) {
+    if (data.length > PAYLOAD_MAX_SIZE) {
       throw new Error('Payload overflow');
     }
+  } else if (typeof data == 'string') {
+    if (Buffer.byteLength(data, 'utf8') > PAYLOAD_MAX_SIZE) {
+      throw new Error('Payload overflow');
+    }
+  } else {
+    throw new Error('Bad type for data');
   }
 
-  this._endsig = new SignalFrame(this._id, SignalFrame.FLAG_END, payload);
+  this._endsig = new SignalFrame(this._id, SignalFrame.FLAG_END, data);
 
   this.destroy();
 };
@@ -510,7 +491,17 @@ function finalizeDestroyChannel(chan, err, message) {
   chan._writequeue = null;
   chan._connection = null;
 
-  err && chan.emit('error', err);
+  if (err) {
+    if (err instanceof Error) {
+      chan.emit('error', err);
+    } else {
+      if (typeof err == 'string') {
+        chan.emit('error', new Error(err));
+      } else {
+        chan.emit('error', new Error('ERR_UNKNOWN'));
+      }
+    }
+  }
 
   chan.emit('close', !(!err), message);
 
@@ -518,44 +509,21 @@ function finalizeDestroyChannel(chan, err, message) {
 };
 
 
-Channel.prototype.ondata = function(data, start, end, flag) {
-  var encoding = this._encoding;
-  var message = data.slice(start, end);
-
-  if (encoding || (flag & 1 == 1)) {
-    if (encoding == 'json') {
-      try {
-        message = JSON.parse(message.toString('utf8'));
-      } catch (exception) {
-        this.destroy(exception);
-        return;
-      }
-    } else {
-      try {
-        message = message.toString(encoding);
-      } catch (exception) {
-        this.destroy(exception);
-        return;
-      }
-    }
+Channel.prototype.ondata = function(data) {
+  if (!this._events || 'data' in this._events == false) {
+    return;
   }
 
-  if (this._events && this._events['data']) {
-    this.emit('data', message, (flag >> 1));
-  }
+  this.emit('data', data);
 };
 
 
-Channel.prototype.onsignal = function(data, start, end) {
-  var message = null;
-
-  if (end - start) {
-    message = data.toString('utf8', start, end);
+Channel.prototype.onsignal = function(data) {
+  if (!this._events || 'signal' in this._events == false) {
+    return;
   }
 
-  if (this._events && this._events['signal']) {
-    this.emit('signal', message);
-  }
+  this.emit('signal', data);
 };
 
 
@@ -580,7 +548,7 @@ Channel.prototype._writeOut = function(packet) {
 };
 
 
-Channel.prototype._open = function(id, message) {
+Channel.prototype._open = function(id, data) {
   var flushed = false;
   var queue = this._writeQueue;
   var packet;
@@ -609,7 +577,7 @@ Channel.prototype._open = function(id, message) {
   if (this._closing) {
     if ((packet = self._endsig)) {
       self._endsig = null;
-      packet.id = newid;
+      packet.id = id;
       try {
         this._writeOut(packet);
       } catch (err) {
@@ -619,7 +587,7 @@ Channel.prototype._open = function(id, message) {
     }
   }
 
-  this.emit('connect', message);
+  this.emit('connect', data);
 
   if (flushed) {
     this.emit('drain');
@@ -838,8 +806,8 @@ Connection.prototype.open = function(chan, path, mode, token) {
 
   request = new OpenRequest(self, path, mode, token);
 
-  request.onresponse = function(newid, message) {
-    chan._open(newid, message);
+  request.onresponse = function(id, data) {
+    chan._open(id, data);
   };
 
   request.onclose = function(err) {
@@ -927,7 +895,7 @@ Connection.prototype.startKeepAliveTimer = function () {
 };
 
 
-Connection.prototype.processOpen = function(id, flag, data, start, end) {
+Connection.prototype.processOpen = function(id, flag, data) {
   var requests = this.requests;
   var keys;
   var request;
@@ -948,34 +916,42 @@ Connection.prototype.processOpen = function(id, flag, data, start, end) {
     return;
   }
 
-  request.processResponse(flag, data, start, end);
+  request.processResponse(flag, data);
 };
 
 
-Connection.prototype.processData = function(id, flag, data, start, end) {
+Connection.prototype.processData = function(id, flag, data) {
   var channels = this.channels;
+  var clone;
   var chan;
 
   if (id === ALL_CHANNELS) {
     for (var chanid in channels) {
       chan = channels[chanid];
       if (chan.readable) {
-        chan.ondata && chan.ondata(data, start, end, flag);
+        if (chan.ondata) {
+          clone = new Buffer(data.length);
+          data.copy(clone);
+          chan.ondata(clone);
+        }
       }
     }
   } else if ((chan = channels[id])) {
     if (chan.readable) {
-      chan.ondata && chan.ondata(data, start, end, flag);
+      if (chan.ondata) {
+        chan.ondata(data);
+      }
     }
   }
 };
 
 
-Connection.prototype.processSignal = function(id, flag, data, start, end) {
+Connection.prototype.processSignal = function(id, flag, data) {
   var channels = this.channels;
   var requests = this.requests;
+  var clone;
   var chan;
-  var message;
+
 
   switch (flag) {
 
@@ -984,12 +960,18 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
         for (var chanid in channels) {
           chan = channels[chanid];
           if (chan._closing == false) {
-            chan.onsignal && chan.onsignal(data, start, end);
+            if (chan.onsignal) {
+              clone = new Buffer(data.length);
+              data.copy(clone);
+              chan.onsignal(clone);
+            }
           }
         }
       } else if ((chan = channels[id])) {
         if (chan._closing == false) {
-          chan.onsignal && chan.onsignal(data, start, end);
+          if (chan.onsignal) {
+            chan.onsignal(data);
+          }
         }
       }
       break;
@@ -997,15 +979,11 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
     case SignalFrame.FLAG_END:
     case SignalFrame.FLAG_ERROR:
 
-      if (end - start) {
-        message = data.toString('utf8', start, end);
-      }
-
       if (id === ALL_CHANNELS) {
         if (flag != SignalFrame.FLAG_END) {
-          this.destroy(new Error(message || 'ERR_UNKNOWN'));
+          this.destroy(data);
         } else {
-          this.destroy(null, message);
+          this.destroy(null, data);
         }
         return;
       }
@@ -1043,9 +1021,9 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
         }
 
         if (flag != SignalFrame.FLAG_END) {
-          finalizeDestroyChannel(chan, new Error(message || 'ERR_UNKNOWN'));
+          finalizeDestroyChannel(chan, data);
         } else {
-          finalizeDestroyChannel(chan, null, message);
+          finalizeDestroyChannel(chan, null, data);
         }
       }
       break;
@@ -1058,17 +1036,17 @@ Connection.prototype.processSignal = function(id, flag, data, start, end) {
 };
 
 
-Connection.prototype.processResolve = function (id, flag, data, start, end) {
+Connection.prototype.processResolve = function (id, flag, data) {
   var requests = this.requests;
   var request;
   var path;
 
-  if (end - start <= 0) {
+  if (!data || data.length == 0) {
     this.destroy(new Error('Server sent a bad resolve response'));
     return;
   }
 
-  path = data.toString('ascii', start, end);
+  path = data.toString('ascii');
 
   if ((request = requests[path])) {
     request.processResolve(id, flag, path);
@@ -1077,7 +1055,7 @@ Connection.prototype.processResolve = function (id, flag, data, start, end) {
 
 
 // Destroy connection with optional Error
-Connection.prototype.destroy = function(err, message) {
+Connection.prototype.destroy = function(err, data) {
   var id = this.id;
   var channels = this.channelsByPath;
   var requests = this.requests;
@@ -1093,7 +1071,7 @@ Connection.prototype.destroy = function(err, message) {
 
   for (var path in channels) {
     if ((chan = channels[path])) {
-      finalizeDestroyChannel(chan, err, message);
+      finalizeDestroyChannel(chan, err, data);
     }
   }
 
@@ -1189,7 +1167,8 @@ OpenRequest.prototype.resolve = function() {
   var self = this;
 
   if (this.id) {
-    throw new Error('OpenRequest already have an ID');
+    this.destroy(new Error('OpenRequest already have an ID'));
+    return;
   }
 
   process.nextTick(function() {
@@ -1232,7 +1211,7 @@ OpenRequest.prototype.cancel = function() {
 };
 
 
-OpenRequest.prototype.destroy = function(err, message) {
+OpenRequest.prototype.destroy = function(err, data) {
   var conn;
 
   if (!this.destroyed) {
@@ -1243,7 +1222,7 @@ OpenRequest.prototype.destroy = function(err, message) {
         conn.setDisposed(true);
       }
     }
-    this.onclose && this.onclose(err, message);
+    this.onclose && this.onclose(err, data);
     this.destroyed = true;
   }
 };
@@ -1269,12 +1248,9 @@ OpenRequest.prototype.processResolve = function(id, flag, path) {
 };
 
 
-OpenRequest.prototype.processResponse = function(flag, data, start, end) {
+OpenRequest.prototype.processResponse = function(flag, data) {
   var conn = this.conn;
   var request;
-  var newid;
-  var message;
-  var len;
 
   if (this.next) {
     if (flag == OpenRequest.FLAG_ALLOW) {
@@ -1288,28 +1264,15 @@ OpenRequest.prototype.processResponse = function(flag, data, start, end) {
     delete conn.requests[this.path];
   }
 
-  len = end - start;
-
   switch (flag) {
 
     case OpenRequest.FLAG_ALLOW:
-      if (len) {
-        try {
-          message = data.toString('utf8', start, end);
-        } catch (err) {
-          this.destroy(err);
-          return;
-        }
-      }
-      this.onresponse(this.id, message);
+      this.onresponse(this.id, data);
       this.destroy();
       break;
 
     default:
-      try {
-        message = len ? data.toString('utf8', start, end) : null;
-      } catch (err) {}
-      this.destroy(new Error(message || 'ERR_OPEN_DENIED'));
+      this.destroy(data);
       break;
   }
 };
@@ -1321,21 +1284,33 @@ OpenRequest.prototype.toBuffer = function() {
   var flag;
   var buffer;
   var length;
+  var ctype;
   var op;
 
+
+  ctype = PAYLOAD_TYPE_TEXT;
+  length = 7;
 
   if ((id = this.id)) {
     op = OP_OPEN;
     flag = this.flag;
     data = this.data;
+
+    if (typeof data == 'string') {
+      data = new Buffer(data, 'utf8');
+      length += data.length;
+    } else if (Buffer.isBuffer(data)) {
+      ctype = PAYLOAD_TYPE_BINARY;
+      length += data.length;
+    }
+
   } else {
     id = OP_RESOLVE;
     op = 0x4;
     flag = 0;
     data = new Buffer(this.path, 'ascii');
+    length += data.length;
   }
-
-  length = 7 + (data ? data.length : 0);
 
   buffer = new Buffer(length);
   buffer[0] = length >>> 8;
@@ -1344,7 +1319,7 @@ OpenRequest.prototype.toBuffer = function() {
   buffer[3] = id >>> 16;
   buffer[4] = id >>> 8;
   buffer[5] = id % 256;
-  buffer[6] = op << 3 | flag;
+  buffer[6] = (ctype << CTYPE_BITPOS) | (op << OP_BITPOS) | flag;
 
   if (length > 7) {
     data.copy(buffer, 7);
@@ -1388,10 +1363,20 @@ DataFrame.prototype.toBuffer = function() {
   var id = this.id;
   var data = this.data;
   var flag = this.flag;
+  var ctype;
   var buffer;
   var length;
 
-  length = 7 + (data ? data.length : 0);
+  ctype = PAYLOAD_TYPE_TEXT;
+  length = 7;
+
+  if (typeof data == 'string') {
+    data = new Buffer(data, 'utf8');
+    length += data.length;
+  } else if (Buffer.isBuffer(data)) {
+    ctype = PAYLOAD_TYPE_BINARY;
+    length += data.length;
+  }
 
   buffer = new Buffer(length);
   buffer[0] = length >>> 8;
@@ -1400,7 +1385,7 @@ DataFrame.prototype.toBuffer = function() {
   buffer[3] = id >>> 16;
   buffer[4] = id >>> 8;
   buffer[5] = id % 256;
-  buffer[6] = OP_DATA << 3 | flag;
+  buffer[6] = (ctype << CTYPE_BITPOS) | (OP_DATA << OP_BITPOS) | flag;
 
   if (length > 7) {
     data.copy(buffer, 7);
@@ -1426,10 +1411,20 @@ SignalFrame.prototype.toBuffer = function() {
   var id = this.id;
   var data = this.data;
   var flag = this.flag;
+  var ctype;
   var buffer;
   var length;
 
-  length = 7 + (data ? data.length : 0);
+  ctype = PAYLOAD_TYPE_TEXT;
+  length = 7;
+
+  if (typeof data == 'string') {
+    data = new Buffer(data, 'utf8');
+    length += data.length;
+  } else if (Buffer.isBuffer(data)) {
+    ctype = PAYLOAD_TYPE_BINARY;
+    length += data.length;
+  }
 
   buffer = new Buffer(length);
   buffer[0] = length >>> 8;
@@ -1438,7 +1433,7 @@ SignalFrame.prototype.toBuffer = function() {
   buffer[3] = id >>> 16;
   buffer[4] = id >>> 8;
   buffer[5] = id % 256;
-  buffer[6] = OP_SIGNAL << 3 | flag;
+  buffer[6] = (ctype << CTYPE_BITPOS) | (OP_SIGNAL << OP_BITPOS) | flag;
 
   if (length > 7) {
     data.copy(buffer, 7);
@@ -1456,6 +1451,8 @@ function parserImplementation(conn) {
   conn.sock.ondata = function(chunk, start, end) {
     var tmpbuff;
     var packetlen;
+    var data;
+    var ctype;
     var ch;
     var op;
     var flag;
@@ -1499,8 +1496,24 @@ function parserImplementation(conn) {
             buffer[offset + 5]) + (buffer[offset + 2] << 24 >>> 0);
 
       desc = buffer[offset + 6];
-      op = ((desc >> 3) & 0xf);
-      flag = (desc << 1 & 0xf) >> 1;
+
+      ctype = (desc & CTYPE_BITMASK) >> CTYPE_BITPOS;
+      op = (desc & OP_BITMASK) >> OP_BITPOS;
+      flag = (desc & FLAG_BITMASK);
+
+      if ((offset + packetlen) - (offset + 7)) {
+        if (ctype == PAYLOAD_TYPE_TEXT) {
+          try {
+            data = buffer.toString('utf8', offset + 7, offset + packetlen);
+          } catch (err) {
+            conn.destroy(err);
+            return;
+          }
+        } else {
+          data = buffer.slice(offset + 7, offset + packetlen);
+        }
+      }
+
 
       switch (op) {
 
@@ -1508,19 +1521,19 @@ function parserImplementation(conn) {
           break;
 
         case OP_OPEN:
-          conn.processOpen(ch, flag, buffer, offset + 7, offset + packetlen);
+          conn.processOpen(ch, flag, data);
           break;
 
         case OP_DATA:
-          conn.processData(ch, flag, buffer, offset + 7, offset + packetlen);
+          conn.processData(ch, flag, data);
           break;
 
         case OP_SIGNAL:
-          conn.processSignal(ch, flag, buffer, offset + 7, offset + packetlen);
+          conn.processSignal(ch, flag, data);
           break;
 
         case OP_RESOLVE:
-          conn.processResolve(ch, flag, buffer, offset + 7, offset + packetlen);
+          conn.processResolve(ch, flag, data);
           break;
       }
 
