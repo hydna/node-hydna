@@ -548,7 +548,7 @@ Channel.prototype._writeOut = function(packet) {
 };
 
 
-Channel.prototype._open = function(id, data) {
+Channel.prototype._open = function(id, data, path) {
   var flushed = false;
   var queue = this._writeQueue;
   var packet;
@@ -559,6 +559,7 @@ Channel.prototype._open = function(id, data) {
   this._request = null;
 
   this._connection.channels[id] = this;
+  this._connection.channelsByPath[path] = this;
   this._connection.chanRefCount++;
 
   if (queue && queue.length) {
@@ -806,8 +807,8 @@ Connection.prototype.open = function(chan, path, mode, token) {
 
   request = new OpenRequest(self, path, mode, token);
 
-  request.onresponse = function(id, data) {
-    chan._open(id, data);
+  request.onresponse = function(id, data, path) {
+    chan._open(id, data, path);
   };
 
   request.onclose = function(err) {
