@@ -13,9 +13,9 @@ timeout(5000);
 function openWithMessage() {
   var chan;
 
-  chan = createTestChannel('rw', 2);
+  chan = createTestChannel('rw', 'test-token?TOKEN');
   chan.on('connect', function(message) {
-    equal(message, 'OK');
+    equal(message, 'TOKEN');
     ok(this.readable);
     ok(this.writable);
     equal(this.readyState, 'readwrite');
@@ -30,12 +30,12 @@ function openWithMessage() {
 function denyWithMessage() {
   var chan;
 
-  chan = createTestChannel('rw', 3);
+  chan = createTestChannel('rw', 'open-deny');
   chan.on('connect', function(message) {
     throw new Error('Received connect');
   });
   chan.on('error', function(err) {
-    equal(err.message, 'NOT_ALLOWED');
+    equal(err.message, 'DENIED');
     chan.destroy();
   });
   chan.on('close', function() {
