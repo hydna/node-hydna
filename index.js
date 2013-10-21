@@ -1240,7 +1240,7 @@ OpenRequest.prototype.processResolve = function(id, flag, path) {
     this.destroy(new Error("ERR_UNABLE_TO_RESOLVE_PATH"));
     return;
   }
-  
+
   this.id = id;
   this.send();
 };
@@ -1585,7 +1585,7 @@ function parseHydnaUrl(url) {
   }
 
   if (url.query) {
-    url.token = new Buffer(decodeURIComponent(url.query), 'utf8');
+    url.token = url.query;
   }
 
   return url;
