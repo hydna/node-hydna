@@ -1265,7 +1265,7 @@ OpenRequest.prototype.processResponse = function(flag, data) {
   switch (flag) {
 
     case OpenRequest.FLAG_ALLOW:
-      this.onresponse(this.id, data);
+      this.onresponse(this.id, data, this.path);
       this.destroy();
       break;
 
