@@ -89,7 +89,7 @@ Send's a message to specified `'url'` whithout creating a new `hydna.Channel` in
 Note: This function is a complement to the ordinary Hydna Channel and should be used when a persistent connection is redundant.
 
 
-### hydna.dispatch(url, data, [prio=0], [callback])
+### hydna.dispatch(url, data, [callback])
 
 Dispatch a signal on the specified `'url'` whithout creating a new `hydna.Channel` instance.
 
