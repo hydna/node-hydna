@@ -221,3 +221,7 @@ Example:
 #### Channel.destroy()
 
 Closes channel for reading, writing and emitting.
+
+## Examples
+
+See directory "./examples" for different use-cases.
