@@ -9,8 +9,7 @@ var count = 0;
 
 timeout(5000);
 
-chan = createTestChannel('rw+e');
-chan.setEncoding('utf8');
+chan = createTestChannel('rw+e', 'ping-back');
 chan.on('connect', function() {
   chan.dispatch('ping');
 });
