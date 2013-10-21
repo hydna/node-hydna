@@ -391,7 +391,6 @@ Channel.prototype.dispatch = function(data) {
 
 
 Channel.prototype.end = function(data) {
-  var payload;
 
   if (this.destroyed || this._closing) {
     return;
@@ -405,8 +404,6 @@ Channel.prototype.end = function(data) {
     if (Buffer.byteLength(data, 'utf8') > PAYLOAD_MAX_SIZE) {
       throw new Error('Payload overflow');
     }
-  } else {
-    throw new Error('Bad type for data');
   }
 
   this._endsig = new SignalFrame(this._id, SignalFrame.FLAG_END, data);
