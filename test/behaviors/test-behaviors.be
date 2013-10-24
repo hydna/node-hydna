@@ -10,11 +10,13 @@ behavior('/ping-back', {
   }
 });
 
+
 behavior('/open-deny', {
   open: function (evt) {
     evt.deny('DENIED');
   }
 });
+
 
 behavior('/test-token', {
   open: function (evt) {

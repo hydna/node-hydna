@@ -55,7 +55,7 @@ The easiest way to install this library is via npm:
 
 The test suite requires a running server instance with the behaviors found `test/behaviors` loaded.
 
-The default server address is `localhost:7010`. This can be overridden via the environment variable `TEST_ADDRESS`.
+The default server address is `testing.hydna.net`. This can be overridden via the environment variable `TEST_ADDRESS`.
 
 To run the test suite:
 
