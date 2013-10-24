@@ -30,56 +30,55 @@
 
 'use strict';
 
-var requestHttp           = require('http').request;
-var requestHttps          = require('https').request;
-var inherits              = require('util').inherits;
-var parseUrl              = require('url').parse;
-var Stream                = require('stream').Stream;
+var requestHttp               = require('http').request;
+var requestHttps              = require('https').request;
+var inherits                  = require('util').inherits;
+var parseUrl                  = require('url').parse;
+var Stream                    = require('stream').Stream;
 
-var VERSION               = require('./package.json').version;
+var VERSION                   = require('./package.json').version;
 
-var STATUS_CODES          = require('http').STATUS_CODES;
+var STATUS_CODES              = require('http').STATUS_CODES;
 
-var READ                  = 0x01;
-var WRITE                 = 0x02;
-var READWRITE             = 0x03;
-var EMIT                  = 0x04;
+var READ                      = 0x01;
+var WRITE                     = 0x02;
+var READWRITE                 = 0x03;
+var EMIT                      = 0x04;
 
-var OP_HEARTBEAT          = 0x0;
-var OP_OPEN               = 0x1;
-var OP_DATA               = 0x2;
-var OP_SIGNAL             = 0x3;
-var OP_RESOLVE            = 0x4;
+var OP_HEARTBEAT              = 0x0;
+var OP_OPEN                   = 0x1;
+var OP_DATA                   = 0x2;
+var OP_SIGNAL                 = 0x3;
+var OP_RESOLVE                = 0x4;
 
-var FLAG_BITMASK          = 0x7;
+var FLAG_BITMASK              = 0x7;
 
-var OP_BITPOS             = 3;
-var OP_BITMASK            = (0x7 << OP_BITPOS);
+var OP_BITPOS                 = 3;
+var OP_BITMASK                = (0x7 << OP_BITPOS);
 
-var CTYPE_BITPOS          = 6;
-var CTYPE_BITMASK         = (0x1 << CTYPE_BITPOS);
+var CTYPE_BITPOS              = 6;
+var CTYPE_BITMASK             = (0x1 << CTYPE_BITPOS);
 
-var PAYLOAD_TYPE_TEXT     = 0;
-var PAYLOAD_TYPE_BINARY   = 1;
+var PAYLOAD_TYPE_TEXT         = 0;
+var PAYLOAD_TYPE_BINARY       = 1;
 
-var PAYLOAD_MAX_SIZE      = 0xFFF8;
+var PAYLOAD_MAX_SIZE          = 0xFFF8;
 
-var ALL_CHANNELS          = 0;
-
-var MODE_RE = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
+var ALL_CHANNELS              = 0;
 
 
-exports.PAYLOAD_MAX_SIZE  = PAYLOAD_MAX_SIZE;
+exports.PAYLOAD_MAX_SIZE      = PAYLOAD_MAX_SIZE;
 
-exports.createChannel     = createChannel;
-exports.send              = send;
-exports.dispatch          = dispatch;
+exports.send                  = send;
+exports.dispatch              = dispatch;
 
-exports.Channel           = Channel;
-exports.Connection        = Connection;
+exports.createChannel         = createChannel;
 
-exports.origin            = require('os').hostname();
-exports.agent             = 'node-wink-client/' + VERSION;
+exports.Channel               = Channel;
+exports.Connection            = Connection;
+
+exports.origin                = require('os').hostname();
+exports.agent                 = 'node-wink-client/' + VERSION;
 
 
 function createChannel (url, mode, C) {
@@ -1548,6 +1547,7 @@ function parserImplementation(conn) {
 // Returns the binary representation of a mode expression. Returns null
 // on invalid mode.
 function getBinMode(modeExpr) {
+  var modere = /^(r|read){0,1}(w|write){0,1}(?:\+){0,1}(e|emit){0,1}$/i;
   var result = 0;
   var match;
 
@@ -1555,7 +1555,7 @@ function getBinMode(modeExpr) {
     return 0;
   }
 
-  if (typeof modeExpr !== 'string' || !(match = modeExpr.match(MODE_RE))) {
+  if (typeof modeExpr !== 'string' || !(match = modeExpr.match(modere))) {
     return null;
   }
 
