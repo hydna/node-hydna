@@ -180,7 +180,7 @@ function files(dirpath, r) {
   paths.forEach(function(path) {
     var p = join(dirpath, path);
     stat(p).isDirectory() && r && (result = result.concat(files(p, r)));
-    stat(p).isFile() && /^test/.test(basename(p)) && result.push(p);
+    stat(p).isFile() && /^test(.+).js$/.test(basename(p)) && result.push(p);
   });
 
   return result;
