@@ -1,4 +1,13 @@
 
+## v1.2.0 (2013-10-27)
+
+Features:
+
+  - Core completly rewritten to be more stabel and logical.
+  - Exposes two new Error classes, OpenError and SignalError. Useful to
+    determind if channel was closed by an OpenDeny.
+
+
 ## v1.1.1 (2013-10-21)
 
 Features:
