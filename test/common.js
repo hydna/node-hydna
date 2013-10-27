@@ -1,5 +1,5 @@
 var Buffer          = require('buffer').Buffer;
-var Channel         = require('../index').Channel;
+var hydna           = require('../index');
 
 exports.TEST_HOST     = process.env['TEST_ADDRESS'] || 'testing.hydna.net';
 exports.TEST_CH       = exports.TEST_HOST + '/x112233';
@@ -7,15 +7,15 @@ exports.TEST_CH       = exports.TEST_HOST + '/x112233';
 var timer = null;
 
 exports.createTestChannel = function(mode, ignoreErrors) {
-  var chan = new Channel();
   var url = exports.TEST_CH;
+  var chan;
 
   if (typeof ignoreErrors == 'string') {
     url = exports.TEST_HOST + '/' + ignoreErrors;
     ignoreErrors = false;
   }
 
-  chan.connect(url, mode);
+  chan = hydna.createChannel(url, mode);
 
   if (ignoreErrors) {
     chan.on('error', function() { });

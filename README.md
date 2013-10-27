@@ -171,16 +171,6 @@ Either `'closed'`, `'closing'`, `'open'`, `'opening'`,
 `'read'`, `'write'`, `'readwrite'` and/or `'+emit'`.
 
 
-#### Channel.path
-
-Returns channel `path` as a string. Property is `null` if not connected.
-
-
-#### Channel.connect(url, mode='readwrite')
-
-See `hydna.createChannel` for more info.
-
-
 #### Channel.write(data,  priority=0)
 
 Sends data on the channel.

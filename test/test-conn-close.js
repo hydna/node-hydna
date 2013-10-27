@@ -30,7 +30,7 @@ function parttwo() {
   var errorraised;
   chan = createTestChannel('rw');
   chan.on('connect', function() {
-    this._connection.sock.end();
+    this._connection.socket.end();
   });
   chan.on('error', function(exception) {
     equal(exception.message, 'Connection reseted by server');

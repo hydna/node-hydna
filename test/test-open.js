@@ -5,6 +5,7 @@ var timeout             = require('./common').timeout;
 var shutdown            = require('./common').shutdown;
 var createTestChannel   = require('./common').createTestChannel;
 var chanErrHandler      = require('./common').chanErrHandler;
+var hydna               = require('../index');
 
 
 timeout(5000);
@@ -35,6 +36,7 @@ function denyWithMessage() {
     throw new Error('Received connect');
   });
   chan.on('error', function(err) {
+    ok(err instanceof hydna.OpenError);
     equal(err.message, 'DENIED');
     chan.destroy();
   });
