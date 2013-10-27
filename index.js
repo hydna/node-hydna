@@ -2,7 +2,7 @@
 'use strict';
 
 var http                      = require('http');
-var requestHttps              = require('https');
+var https                     = require('https');
 var util                      = require('util');
 var parseUrl                  = require('url').parse;
 var events                    = require('events');
