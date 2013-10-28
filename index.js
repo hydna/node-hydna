@@ -186,7 +186,7 @@ function writeHttpRequest (url, data, headers, C) {
 
   options = {
     hostname: url.hostname,
-    port: url.port || 80,
+    port: url.port || (httpmod == http ? 80 : 443),
     path: url.pathname,
     method: 'POST',
     headers: headers
