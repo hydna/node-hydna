@@ -6,13 +6,18 @@ exports.TEST_CH       = exports.TEST_HOST + '/x112233';
 
 var timer = null;
 
-exports.createTestChannel = function(mode, ignoreErrors) {
+exports.createTestChannel = function(mode, ignoreErrors, secure) {
   var url = exports.TEST_CH;
   var chan;
 
   if (typeof ignoreErrors == 'string') {
     url = exports.TEST_HOST + '/' + ignoreErrors;
     ignoreErrors = false;
+  }
+
+  if (secure) {
+    process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+    url = 'https://' + url;
   }
 
   chan = hydna.createChannel(url, mode);
