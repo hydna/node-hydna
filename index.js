@@ -180,9 +180,9 @@ function writeHttpRequest (url, data, headers, C) {
 
   headers['Content-Length'] = payload.length;
 
-  httpmod = url.protocol == 'http:' ? http : https;
-
   url = parseHydnaUrl(url);
+
+  httpmod = url.protocol == 'http:' ? http : https;
 
   options = {
     hostname: url.hostname,
@@ -193,7 +193,7 @@ function writeHttpRequest (url, data, headers, C) {
   };
 
   req = httpmod.request(options, function (res) {
-    var data;
+    var data = '';
 
     if (typeof C !== 'function') {
       return;
@@ -209,9 +209,8 @@ function writeHttpRequest (url, data, headers, C) {
       data += chunk;
     });
 
-    res.on('close', function () {
-      var err;
-      err = new Error(data || 'HTTP_' + res.statusCode);
+    res.on('end', function () {
+      var err = new OpenError(data || 'HTTP_' + res.statusCode);
       return C(err);
     });
   });
