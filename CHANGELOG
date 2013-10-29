@@ -1,4 +1,15 @@
 
+## v1.2.1 (2013-10-29)
+
+Features:
+
+  - Full TLS support
+
+Bugfixes:
+
+  - Fixed issue with https in push API.
+
+
 ## v1.2.0 (2013-10-27)
 
 Features:
