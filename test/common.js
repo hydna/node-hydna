@@ -1,22 +1,40 @@
-var Buffer          = require('buffer').Buffer;
-var hydna           = require('../index');
+var crypto                    = require('crypto');
+var os                        = require('os');
 
-exports.TEST_HOST     = process.env['TEST_ADDRESS'] || 'testing.hydna.net';
-exports.TEST_CH       = exports.TEST_HOST + '/x112233';
+var hydna                     = require('../index');
+
+
+exports.TEST_HOST             = process.env['TEST_ADDRESS'] ||
+                                'testing.hydna.net';
+
+exports.TEST_CH               = exports.TEST_HOST + '/x112233';
+
+
+exports.createTestChannel     = createTestChannel;
+
+exports.timeout               = timeout;
+exports.shutdown              = shutdown;
+exports.createPayload         = createPayload;
+exports.compareBuffers        = compareBuffers;
+exports.uniqueUrl             = uniqueUrl;
+exports.uniquePath            = uniquePath;
+
 
 var timer = null;
 
-exports.createTestChannel = function(mode, ignoreErrors, secure) {
-  var url = exports.TEST_CH;
+
+function createTestChannel (mode, ignoreErrors, secure) {
+  var url;
   var chan;
 
   if (typeof ignoreErrors == 'string') {
     url = exports.TEST_HOST + '/' + ignoreErrors;
     ignoreErrors = false;
-  }
-
-  if (secure) {
-    url = 'https://' + url;
+    if (secure) {
+      url = 'https://' + url;
+    }
+  } else {
+    url = uniqueUrl(secure ? 'https:/' : 'http:/', exports.TEST_HOST);
   }
 
   chan = hydna.createChannel(url, mode);
@@ -28,22 +46,21 @@ exports.createTestChannel = function(mode, ignoreErrors, secure) {
   return chan;
 }
 
-exports.shutdown = function() {
+
+function shutdown () {
   clearTimeout(timer);
   process.exit();
 }
 
-exports.timeout = function(timeout) {
+
+function timeout (timeout) {
   timer = setTimeout(function() {
     throw new Error('Timeout reached');
   }, timeout);
 }
 
-exports.streamErrHandler = function(exception) {
-  throw exception;
-}
 
-exports.createPayload = function(size) {
+function createPayload (size) {
   var payload = new Buffer(size);
   var index = size;
 
@@ -54,7 +71,8 @@ exports.createPayload = function(size) {
   return payload
 }
 
-exports.compareBuffers = function(bufferA, bufferB) {
+
+function compareBuffers (bufferA, bufferB) {
   var index = bufferA.length;
 
   if (index != bufferB.length) {
@@ -68,4 +86,16 @@ exports.compareBuffers = function(bufferA, bufferB) {
   }
 
   return true;
+}
+
+
+function uniquePath () {
+  var path = [os.hostname(), crypto.pseudoRandomBytes(64).toString('base64')];
+  return path.join('/');
+}
+
+
+function uniqueUrl (protocol, host) {
+  var url = [protocol, host, uniquePath()];
+  return url.join('/');
 }
