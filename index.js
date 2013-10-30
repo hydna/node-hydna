@@ -713,7 +713,7 @@ Connection.prototype.processSignal = function(ptr, flag, data) {
       if (ptr === ALL_CHANNELS) {
         for (var chanptr in routes) {
           channel = routes[chanptr];
-          if (channel.emitable && channel._connected) {
+          if (channel._connected) {
             clone = new Buffer(data.length);
             data.copy(clone);
             try {
@@ -724,7 +724,7 @@ Connection.prototype.processSignal = function(ptr, flag, data) {
           }
         }
       } else if ((channel = routes[ptr])) {
-        if (channel.emitable && channel._connected) {
+        if (channel._connected) {
           try {
             channel.emit('signal', data);
           } catch (emitErr) {
