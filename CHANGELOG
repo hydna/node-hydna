@@ -1,3 +1,15 @@
+## v1.2.2 (2013-10-30)
+
+Features:
+
+  - Added Multi-connection test
+  - Added Close-data test
+
+Bugfixes:
+
+  - Fixed issue where signals was not transmitted if channel did not open in
+    emit mode.
+
 
 ## v1.2.1 (2013-10-29)
 
