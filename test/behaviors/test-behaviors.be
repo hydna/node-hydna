@@ -23,3 +23,11 @@ behavior('/test-token', {
     evt.allow(evt.token);
   }
 });
+
+
+behavior('/emit-back-on-close', {
+   close: function (evt) {
+     var root = evt.domain.getChannel('/');
+     root.emit(evt.data, evt.connection);   
+   } 
+});
