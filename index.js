@@ -811,13 +811,13 @@ Connection.prototype.processResolve = function(ptr, flag, data) {
 
   if ((channel = this.channels[path])) {
 
-    if (flag != FLAG_ALLOW) {
-      this.destroyChannel(channel, new Error("ERR_UNABLE_TO_RESOLVE_PATH"));
+    if (channel._closing) {
+      this.destroyChannel(channel);
       return;
     }
 
-    if (channel._closing) {
-      this.destroyChannel(channel);
+    if (flag != FLAG_ALLOW) {
+      this.destroyChannel(channel, new Error("ERR_UNABLE_TO_RESOLVE_PATH"));
       return;
     }
 
