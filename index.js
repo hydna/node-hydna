@@ -689,7 +689,7 @@ Connection.prototype.processData = function(ptr, flag, data) {
       channel = routes[chanptr];
       if (channel.readable && channel._connected) {
         clone = new Buffer(data.length);
-        data.copy(clone)
+        data.copy(clone);
         channel.emit('data', clone);
       }
     }
