@@ -322,8 +322,10 @@ Channel.prototype._onend = function(data) {
   var self = this;
 
   this._ptr = null;
+  this._token = null;
   this._closing = false;
   this._connected = false;
+  this._resolved = false;
   this._mode = null;
 
   this._connection = null;
