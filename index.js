@@ -440,6 +440,7 @@ function Connection(url) {
   this.socket = null;
   this.connecting = false;
   this.connected = false;
+  this.request = null;
 
   this.keepAliveTimer = null;
   this.lastSentMessage = 0;
@@ -453,6 +454,8 @@ Connection.prototype._onsocket = function(socket) {
   var self = this;
   var channels = this.channels;
   var frame;
+
+  this.request = null;
 
   socket.setNoDelay(true);
 
@@ -484,13 +487,6 @@ Connection.prototype._onsocket = function(socket) {
 
   this.socket = socket;
   this.connected = true;
-
-  if (this.refcount == 0) {
-    // All requests was cancelled before we got a
-    // handshake from server. Destroy us.
-    this.destroy();
-    return;
-  }
 
   try {
     for (var path in channels) {
@@ -636,6 +632,8 @@ Connection.prototype.connect = function() {
   });
   
   request.end();
+
+  this.request = request;
 };
 
 
@@ -871,6 +869,15 @@ Connection.prototype.destroy = function(data) {
   if (this.socket) {
     this.socket.destroy();
     this.socket = null;
+  }
+
+  if (this.request) {
+    try {
+      this.request.abort();
+    } catch (err) {
+    } finally {
+      this.request = null;
+    }
   }
 
   this.emit('close');
