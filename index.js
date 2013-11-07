@@ -240,6 +240,7 @@ function Channel(connection, path, mode, token) {
   this._ptr = null;
   this._connected = false;
   this._closing = false;
+  this._resolved = false;
   this._writeQueue = null;
   this._destroyed = false;
   this._endsig = null;
@@ -493,8 +494,11 @@ Connection.prototype._onsocket = function(socket) {
 
   try {
     for (var path in channels) {
-      frame = createFrame(0, OP_RESOLVE, 0, path);
-      this.write(frame);
+      if (channels[path]._resolved == false) {
+        channels[path]._resolved = true;
+        frame = createFrame(0, OP_RESOLVE, 0, path);
+        this.write(frame);
+      }
     }
   } catch (writeError) {
     this.destroy(writeError);
@@ -530,6 +534,7 @@ Connection.prototype.createChannel = function(path, mode, data) {
 
   // Do not send request if socket isnt handshaked yet
   if (this.connected) {
+    channel._resolved = true;
     frame = createFrame(0, OP_RESOLVE, 0, path);
     try {
       this.write(frame);
