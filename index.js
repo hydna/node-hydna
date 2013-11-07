@@ -484,10 +484,10 @@ Connection.prototype._onsocket = function(socket) {
   this.socket = socket;
   this.connected = true;
 
-  if (self.refcount == 0) {
+  if (this.refcount == 0) {
     // All requests was cancelled before we got a
     // handshake from server. Destroy us.
-    self.destroy();
+    this.destroy();
     return;
   }
 
