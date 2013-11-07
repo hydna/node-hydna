@@ -659,7 +659,7 @@ Connection.prototype.startKeepAliveTimer = function () {
       try {
         self.write(frame);
       } catch (writeError) {
-        this.destroy(writeError);
+        self.destroy(writeError);
       }
     }
   }, 5000);
