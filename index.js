@@ -40,7 +40,7 @@ var CTYPE_BITMASK             = (0x1 << CTYPE_BITPOS);
 var PAYLOAD_TYPE_TEXT         = 0;
 var PAYLOAD_TYPE_BINARY       = 1;
 
-var PAYLOAD_MAX_SIZE          = 0xFFF8;
+var PAYLOAD_MAX_SIZE          = 0xFFFA;
 
 var ALL_CHANNELS              = 0;
 
@@ -671,7 +671,7 @@ Connection.prototype.startKeepAliveTimer = function () {
 Connection.prototype.processOpen = function(ptr, flag, data) {
   var channel;
 
-  if ((channel = this.routes[ptr]) == false) {
+  if (!(channel = this.routes[ptr])) {
     this.destroy(new Error('Server sent an open response to unknown'));
     return;
   }
@@ -920,7 +920,7 @@ function createFrame(ptr, op, flag, data) {
   var ctype;
 
   ctype = PAYLOAD_TYPE_TEXT;
-  length = 7;
+  length = 5;
 
   if (typeof data == 'string') {
     pload = new Buffer(data, 'utf8');
@@ -931,7 +931,7 @@ function createFrame(ptr, op, flag, data) {
     length += pload.length;
   }
 
-  frame = new Buffer(length);
+  frame = new Buffer(2 + length);
   frame[0] = (length & 0xff00) >>> 8;
   frame[1] = length & 0x00ff;
   frame[2] = (ptr >>> 24) & 0xff;
@@ -1002,7 +1002,7 @@ function parserImplementation(conn) {
 
       packetlen = buffer[offset] << 8 | buffer[offset + 1];
 
-      if (packetlen < 0x7) {
+      if (packetlen < 0x5) {
         // Size is lower then packet header. Destroy wire
         return conn.destroy(new Error('bad packet size'));
       }
@@ -1013,26 +1013,28 @@ function parserImplementation(conn) {
         break;
       }
 
-      ptr = (buffer[offset + 3] << 16 |
-             buffer[offset + 4] << 8 |
-             buffer[offset + 5]) + (buffer[offset + 2] << 24 >>> 0);
+      offset += 2;
 
-      desc = buffer[offset + 6];
+      ptr = (buffer[offset + 1] << 16 |
+             buffer[offset + 2] << 8 |
+             buffer[offset + 3]) + (buffer[offset] << 24 >>> 0);
+
+      desc = buffer[offset + 4];
 
       ctype = (desc & CTYPE_BITMASK) >> CTYPE_BITPOS;
       op = (desc & OP_BITMASK) >> OP_BITPOS;
       flag = (desc & FLAG_BITMASK);
 
-      if ((offset + packetlen) - (offset + 7)) {
+      if ((offset + packetlen) - (offset + 5)) {
         if (ctype == PAYLOAD_TYPE_TEXT) {
           try {
-            data = buffer.toString('utf8', offset + 7, offset + packetlen);
+            data = buffer.toString('utf8', offset + 5, offset + packetlen);
           } catch (err) {
             conn.destroy(err);
             return;
           }
         } else {
-          data = buffer.slice(offset + 7, offset + packetlen);
+          data = buffer.slice(offset + 5, offset + packetlen);
         }
       }
 
@@ -1062,7 +1064,7 @@ function parserImplementation(conn) {
     }
 
     if (length - offset === 0) {
-       buffer = null;
+      buffer = null;
     }
   };
 };
