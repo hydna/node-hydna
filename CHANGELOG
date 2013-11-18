@@ -1,3 +1,17 @@
+## v1.2.3 (2013-11-19)
+
+Features:
+
+  - Added option to disable multiplexing when creating a channel (useful when
+    testing many connection from one process).
+
+Bugfixes:
+
+ - Fixed issue where channels could be resolved multiple times
+ - Fixed issue with ghost http requests
+ - Minor bug fixes
+
+
 ## v1.2.2 (2013-10-30)
 
 Features:
