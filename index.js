@@ -490,7 +490,7 @@ Connection.prototype._onsocket = function(socket) {
   socket.on('close', function(hadError) {
     if (hadError == false) {
       self.socket = null;
-      self.destroy(new Error('Connection reseted by server'));
+      self.destroy(new Error('Connection reset by server'));
     }
   });
 

@@ -33,7 +33,7 @@ function parttwo() {
     this._connection.socket.end();
   });
   chan.on('error', function(exception) {
-    equal(exception.message, 'Connection reseted by server');
+    equal(exception.message, 'Connection reset by server');
     errorraised = true;
   });
   chan.on('close', function() {
