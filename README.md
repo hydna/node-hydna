@@ -96,7 +96,7 @@ Dispatch a signal on the specified `'url'` whithout creating a new `hydna.Channe
 Note: This function is a complement to the ordinary Hydna Channel and should be used when a persistent connection is redundant.
 
 
-### hydna.createChannel(url, mode, [callback])
+### hydna.createChannel(url, mode, [options], [callback])
 
 Opens a Channel to the specified ´'url'´.
 
@@ -107,6 +107,9 @@ Available modes:
 * write (w) - Open channel in write mode
 * readwrite (rw) - Open channel in read-write mode.
 * +emit(e) - Open channel with emit-signal support (e.g. 'rw+emit').
+
+Available options:
+* `disableMultiplex`, disables multiplexing of channels over one socket. Default is `false` (multiplex is enabled),
 
 This example opens a Channel and writes data too it. The same data
 is received :

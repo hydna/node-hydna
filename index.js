@@ -64,27 +64,34 @@ exports.agent                 = 'node-wink-client/' + VERSION;
 var connections               = {};
 
 
-function createChannel(url, mode, C) {
+function createChannel(url, mode, opts, C) {
   var connection;
   var channel;
   var urlobj;
   var connurl;
   var path;
 
+  if (typeof opts == 'function') {
+    C = opts;
+    opts = null;
+  }
+
   urlobj = parseHydnaUrl(url);
   connurl = createConnectionUrl(urlobj);
   path = urlobj.pathname;
 
-  if (Array.isArray(connections[connurl])) {
-    for (var i = 0; i < connections[connurl].length; i++) {
-      if (path in connections[connurl][i].channels == false) {
-        connection = connections[connurl][i];
-        break;
+  if (!opts || !opts.disableMultiplex) {
+    if (Array.isArray(connections[connurl])) {
+      for (var i = 0; i < connections[connurl].length; i++) {
+        if (path in connections[connurl][i].channels == false) {
+          connection = connections[connurl][i];
+          break;
+        }
       }
-    }
-  } else if (connections[connurl]) {
-    if (path in connections[connurl].channels == false) {
-      connection = connections[connurl];
+    } else if (connections[connurl]) {
+      if (path in connections[connurl].channels == false) {
+        connection = connections[connurl];
+      }
     }
   }
 
