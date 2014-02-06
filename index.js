@@ -547,9 +547,7 @@ Connection.prototype.createChannel = function(path, mode, data) {
       this.destroy(writeError);
       return;
     }
-  }
-
-  if (this.connecting == false) {
+  } else if (this.connecting == false) {
     this.connect();
   }
 
