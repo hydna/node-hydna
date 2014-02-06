@@ -535,12 +535,12 @@ Connection.prototype.createChannel = function(path, mode, data) {
   channel = new Channel(this, path, mode, data);
 
   this.channels[path] = channel;
-  this.refcount++;
 
   // Do not send request if socket isnt handshaked yet
   if (this.connected) {
     channel._resolved = true;
     frame = createFrame(0, OP_RESOLVE, 0, path);
+
     try {
       this.write(frame);
     } catch (writeError) {
@@ -552,6 +552,8 @@ Connection.prototype.createChannel = function(path, mode, data) {
   if (this.connecting == false) {
     this.connect();
   }
+
+  this.refcount++;
 
   return channel;
 };
