@@ -702,12 +702,20 @@ Connection.prototype.processData = function(ptr, flag, data) {
       if (channel.readable && channel._connected) {
         clone = new Buffer(data.length);
         data.copy(clone);
-        channel.emit('data', clone);
+        try {
+          channel.emit('data', clone);
+        } catch (dataErr) {
+          this.destroyChannel(channel, dataErr);
+        }
       }
     }
   } else if ((channel = routes[ptr])) {
     if (channel.readable && channel._connected) {
-      channel.emit('data', data);
+      try {
+        channel.emit('data', data);
+      } catch (dataErr) {
+        this.destroyChannel(channel, dataErr);
+      }
     }
   }
 };
@@ -731,7 +739,7 @@ Connection.prototype.processSignal = function(ptr, flag, data) {
             try {
               channel.emit('signal', clone);
             } catch (emitErr) {
-              this.destroyChannel(channel);
+              this.destroyChannel(channel, emitErr);
             }
           }
         }
@@ -740,7 +748,7 @@ Connection.prototype.processSignal = function(ptr, flag, data) {
           try {
             channel.emit('signal', data);
           } catch (emitErr) {
-            this.destroyChannel(channel);
+            this.destroyChannel(channel, emitErr);
           }
         }
       }
