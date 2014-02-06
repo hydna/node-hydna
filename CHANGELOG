@@ -1,3 +1,12 @@
+## v2.0.1 (2014-02-06)
+
+Bugfixes:
+
+  - Fixed bug when error was catched and never display for user
+  - Fixed bug where channel tried to connect to socket multiple times
+  - Fixed a refcount bug that could happen if createChannel throwed an
+    exception
+
 ## v2.0.0 (2013-11-20)
 
 Features:
