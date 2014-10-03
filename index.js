@@ -568,7 +568,7 @@ Connection.prototype.destroyChannel = function(channel, data) {
   if (typeof channel._ptr == 'number') {
     delete this.routes[channel._ptr];
   }
-  
+
   channel._onend(data);
 
   this.refcount--;
@@ -639,7 +639,7 @@ Connection.prototype.connect = function() {
       self._onsocket(socket);
     }
   });
-  
+
   request.end();
 
   this.request = request;
@@ -672,6 +672,12 @@ Connection.prototype.startKeepAliveTimer = function () {
       }
     }
   }, 5000);
+
+  try {
+    this.write(createFrame(0, OP_HEARTBEAT, 0));
+  } catch (writeError) {
+    this.destroy(writeError);
+  }
 };
 
 
