@@ -1,5 +1,12 @@
 ## v2.0.1 (2014-02-06)
 
+Changes:
+
+  - Activate HEARBEAT at connect
+
+
+## v2.0.1 (2014-02-06)
+
 Bugfixes:
 
   - Fixed bug when error was catched and never display for user
