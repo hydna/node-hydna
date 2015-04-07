@@ -618,9 +618,11 @@ Connection.prototype.connect = function() {
   }
 
   request.on('response', function(res) {
-    res.on('end', function() {
+    if (res.statusCode == 200) {
       self.destroy(new Error('Expected 101 Upgrade'));
-    });
+    } else {
+      self.destroy(new Error("Http error: " + res.statusCode));
+    }
   });
 
   request.on('error', function(err) {
