@@ -1,6 +1,6 @@
 {
 	"name": "hydna",
-	"version": "2.0.2",
+	"version": "2.0.3",
 	"description": "Hydna client",
 	"keywords": ["hermes", "wink", "client", "hydna", "real-time", "messaging"],
 	"homepage": "https://github.com/hydna/node-hydna",

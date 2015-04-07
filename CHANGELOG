@@ -1,3 +1,10 @@
+## v2.0.3 (2015-04-07)
+
+Changes:
+
+  - Made library compatible with Node v0.12.X
+
+
 ## v2.0.1 (2014-02-06)
 
 Changes:
