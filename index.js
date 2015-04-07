@@ -511,9 +511,9 @@ Connection.prototype._onsocket = function(socket) {
   }
 
   process.nextTick(function () {
-    socket.resume();
     parserImplementation(self);
     self.startKeepAliveTimer();
+    socket.resume();
   });
 };
 
@@ -993,7 +993,7 @@ function parserImplementation(conn) {
   var offset = 0;
   var length = 0;
 
-  conn.socket.ondata = function(chunk, start, end) {
+  conn.socket.on('data', function(chunk) {
     var tmpbuff;
     var packetlen;
     var data;
@@ -1004,16 +1004,16 @@ function parserImplementation(conn) {
     var desc;
 
     if (buffer) {
-      tmpbuff = new Buffer((length - offset) + (end - start));
+      tmpbuff = new Buffer((length - offset) + chunk.length);
       buffer.copy(tmpbuff, 0, offset, length);
-      chunk.copy(tmpbuff, (length - offset), start, end);
+      chunk.copy(tmpbuff, (length - offset), 0, chunk.length);
       buffer = tmpbuff;
       length = buffer.length;
       offset = 0;
     } else {
       buffer = chunk;
-      offset = start;
-      length = end;
+      offset = 0;
+      length = chunk.length;
     }
 
     while (offset < length && conn.url) {
@@ -1030,7 +1030,7 @@ function parserImplementation(conn) {
         return conn.destroy(new Error('bad packet size'));
       }
 
-      if (offset + packetlen > length) {
+      if (offset + 2 + packetlen > length) {
         // We have not received the whole packet yet. Wait for
         // more data.
         break;
@@ -1089,7 +1089,7 @@ function parserImplementation(conn) {
     if (length - offset === 0) {
       buffer = null;
     }
-  };
+  });
 };
 
 
