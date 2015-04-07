@@ -25,7 +25,6 @@
 //  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-var print               = require('util').print
 var spawn               = require('child_process').spawn
 var stat                = require('fs').statSync
 var readdir             = require('fs').readdirSync
@@ -185,6 +184,12 @@ function files(dirpath, r) {
 
   return result;
 }
+
+
+function print(s) {
+  process.stdout.write(s);
+}
+
 
 // Run in exec mode if executed from
 // command line
